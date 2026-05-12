@@ -105,6 +105,12 @@ io.on("connection", (socket) => {
         const { roomId, mapType } = data;
         if (gameRooms[roomId]) {
             let finalMap = maps[mapType] || maps.classic;
+            io.to(roomId).emit("game-started", { 
+            map: finalMap, 
+            players: room.players 
+        });
+    }
+});
             gameRooms[roomId].items = [];
             const types = ['SPEED', 'DAMAGE', 'HEAL'];
             
