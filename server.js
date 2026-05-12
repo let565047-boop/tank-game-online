@@ -9,7 +9,6 @@ app.use(express.static(__dirname));
 
 let gameRooms = {};
 
-// 5 Loại bản đồ Sen đã duyệt - Tui để dạng mảng cho Sen dễ nhìn
 const maps = {
     classic: "RANDOM",
     arena: [[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],[1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[1,0,1,1,0,0,0,0,0,0,0,1,1,0,1],[1,0,1,1,0,0,0,0,0,0,0,1,1,0,1],[1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[1,0,0,0,0,1,1,1,1,1,0,0,0,0,1],[1,0,0,0,0,1,0,0,0,1,0,0,0,0,1],[1,0,0,0,0,1,0,0,0,1,0,0,0,0,1],[1,0,0,0,0,1,1,1,1,1,0,0,0,0,1],[1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[1,0,1,1,0,0,0,0,0,0,0,1,1,0,1],[1,0,1,1,0,0,0,0,0,0,0,1,1,0,1],[1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]],
@@ -18,10 +17,14 @@ const maps = {
     fortress: [[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],[1,0,0,0,0,0,1,1,1,0,0,0,0,0,1],[1,0,1,1,0,0,0,0,0,0,0,1,1,0,1],[1,0,1,1,0,1,1,0,1,1,0,1,1,0,1],[1,0,0,0,0,1,0,0,0,1,0,0,0,0,1],[1,0,0,1,1,1,0,0,0,1,1,1,0,0,1],[1,1,0,0,0,0,0,1,0,0,0,0,0,1,1],[1,1,0,0,0,0,0,1,0,0,0,0,0,1,1],[1,0,0,1,1,1,0,0,0,1,1,1,0,0,1],[1,0,0,0,0,1,0,0,0,1,0,0,0,0,1],[1,0,1,1,0,1,1,0,1,1,0,1,1,0,1],[1,0,1,1,0,0,0,0,0,0,0,1,1,0,1],[1,0,0,0,0,0,1,1,1,0,0,0,0,0,1],[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]]
 };
 
-io.on("connection", (socket) => { // Phải có dấu { ở đây
+io.on("connection", (socket) => {
+    console.log("Kết nối mới:", socket.id);
+
     socket.on("join-room", (data) => {
         const { roomId, playerName, color } = data;
         socket.join(roomId);
+        socket.currentRoom = roomId; // Lưu lại để dùng khi disconnect
+
         if (!gameRooms[roomId]) gameRooms[roomId] = { players: {}, items: [] };
 
         const pCount = Object.keys(gameRooms[roomId].players).length;
@@ -43,10 +46,8 @@ io.on("connection", (socket) => { // Phải có dấu { ở đây
         };
         io.to(roomId).emit("update-players", gameRooms[roomId].players);
     });
-    
-    // Đừng quên đóng ngoặc của io.on ở cuối file nữa nha!
-});
- socket.on("start-game", (data) => {
+
+    socket.on("start-game", (data) => {
         const { roomId, mapType } = data;
         const room = gameRooms[roomId];
         if (room) {
@@ -54,14 +55,13 @@ io.on("connection", (socket) => { // Phải có dấu { ở đây
             room.items = [];
             const types = ['SPEED', 'DAMAGE', 'HEAL'];
             
-            // Rải 6 món đồ ngẫu nhiên
             for(let i=0; i<6; i++) {
                 let rx, ry, found = false, attempts = 0;
                 while(!found && attempts < 50) {
                     rx = Math.floor(Math.random() * 13 + 1);
                     ry = Math.floor(Math.random() * 13 + 1);
                     if (finalMap === "RANDOM") { if(rx%2!==0 && ry%2!==0) found = true; }
-                    else if (finalMap[ry][rx] === 0) found = true;
+                    else if (finalMap[ry] && finalMap[ry][rx] === 0) found = true;
                     attempts++;
                 }
                 if (found) {
@@ -73,11 +73,11 @@ io.on("connection", (socket) => { // Phải có dấu { ở đây
                     });
                 }
             }
-            // Gửi dữ liệu về cho sen
-            io.to(roomId).emit("game-started", { map: finalMap, players: room.players });
-            io.to(roomId).emit("spawn-items", room.items); // Dòng này quan trọng nè!
+            io.to(roomId).emit("game-started", { maze: finalMap, players: room.players });
+            io.to(roomId).emit("spawn-items", room.items);
         }
     });
+
     socket.on("move", (d) => {
         if(gameRooms[d.roomId]?.players[socket.id]) {
             Object.assign(gameRooms[d.roomId].players[socket.id], { x: d.x, y: d.y, angle: d.angle });
@@ -85,33 +85,54 @@ io.on("connection", (socket) => { // Phải có dấu { ở đây
         }
     });
 
-    socket.on("shoot", (b) => socket.to(b.roomId).emit("new-bullet", b));
-
-    socket.on("hit", (d) => {
-        const p = gameRooms[d.roomId]?.players[d.targetId];
-        if (p && p.alive) {
-            p.hp -= d.damage;
-            if (p.hp <= 0) { p.hp = 0; p.alive = false; io.to(d.targetId).emit("game-over", { result: "DEFEAT" }); socket.emit("game-over", { result: "VICTORY" }); }
-            io.to(d.roomId).emit("update-players", gameRooms[d.roomId].players);
-        }
+    socket.on("shoot", (data) => {
+        socket.to(data.roomId).emit("new-bullet", { 
+            id: socket.id, 
+            x: data.x, 
+            y: data.y, 
+            angle: data.angle, 
+            damage: gameRooms[data.roomId]?.players[socket.id]?.damage || 35 
+        });
     });
 
-socket.on("item-collected", (d) => {
+    socket.on("hit", (d) => {
         const room = gameRooms[d.roomId];
-        if (room) {
-            // Nếu là túi máu (HEAL), server cập nhật máu gốc của sen luôn cho chắc
-            if (d.type === 'HEAL' && room.players[socket.id]) {
-                room.players[socket.id].hp = Math.min(100, room.players[socket.id].hp + 40);
+        const p = room?.players[d.targetId];
+        if (p && p.alive) {
+            p.hp -= d.damage;
+            if (p.hp <= 0) { 
+                p.hp = 0; p.alive = false; 
+                io.to(d.targetId).emit("game-over", { result: "DEFEAT" }); 
+                socket.emit("game-over", { result: "VICTORY" }); 
             }
-            
-            // Xóa món đồ đó khỏi danh sách của phòng
-            room.items = room.items.filter(i => i.id !== d.itemId);
-            
-            // Báo cho tất cả mọi người là đồ đã bị lấy mất rồi
-            io.to(d.roomId).emit("spawn-items", room.items);
-            // Cập nhật lại thanh máu cho mọi người cùng thấy
             io.to(d.roomId).emit("update-players", room.players);
         }
     });
 
-server.listen(process.env.PORT || 3000, () => console.log("Server Online!"))
+    socket.on("item-collected", (d) => {
+        const room = gameRooms[d.roomId];
+        if (room && room.players[socket.id]) {
+            if (d.type === 'HEAL') {
+                room.players[socket.id].hp = Math.min(100, room.players[socket.id].hp + 40);
+            }
+            room.items = room.items.filter(i => i.id !== d.itemId);
+            io.to(d.roomId).emit("spawn-items", room.items);
+            io.to(d.roomId).emit("update-players", room.players);
+        }
+    });
+
+    socket.on("disconnect", () => {
+        const roomId = socket.currentRoom;
+        if (roomId && gameRooms[roomId]) {
+            delete gameRooms[roomId].players[socket.id];
+            if (Object.keys(gameRooms[roomId].players).length === 0) {
+                delete gameRooms[roomId];
+            } else {
+                io.to(roomId).emit("update-players", gameRooms[roomId].players);
+            }
+        }
+    });
+});
+
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => console.log("Server Online tại cổng: " + PORT));
