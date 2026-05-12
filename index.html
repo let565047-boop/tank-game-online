@@ -28,14 +28,18 @@
             align-items:center;
         }
 
-        #game-container{
-            display:none;
-            width:100vw;
-            height:100vh;
-            justify-content:center;
-            align-items:center;
-            gap:20px;
-        }
+       #game-container{
+    display:none;
+    width:100vw;
+    height:100vh;
+
+    flex-direction:column;
+
+    justify-content:center;
+    align-items:center;
+
+    gap:20px;
+}
 
         #gameCanvas{
             background:#0f172a;
@@ -59,7 +63,16 @@
             color:white;
             font-size:35px;
         }
+.controls{
 
+    width:90vw;
+
+    display:flex;
+
+    justify-content:space-between;
+
+    align-items:center;
+}
         .color-btn{
             width:35px;
             height:35px;
@@ -149,16 +162,19 @@
 
 <div id="game-container">
 
-    <div id="joystick-zone"></div>
-
     <canvas id="gameCanvas" width="600" height="600"></canvas>
 
-    <button onclick="shoot()" class="shoot-btn">
-        💣
-    </button>
+    <div class="controls">
+
+        <div id="joystick-zone"></div>
+
+        <button onclick="shoot()" class="shoot-btn">
+            💣
+        </button>
+
+    </div>
 
 </div>
-
 <script>
 
 const socket = io();
@@ -305,12 +321,12 @@ function update(){
 
     let dx = 0;
     let dy = 0;
+const moveSpeed = me.speed * 0.7;
 
-    if(keys["KeyW"]) dy -= me.speed;
-    if(keys["KeyS"]) dy += me.speed;
-    if(keys["KeyA"]) dx -= me.speed;
-    if(keys["KeyD"]) dx += me.speed;
-
+if(keys["KeyW"]) dy -= moveSpeed;
+if(keys["KeyS"]) dy += moveSpeed;
+if(keys["KeyA"]) dx -= moveSpeed;
+if(keys["KeyD"]) dx += moveSpeed;
     if(dx !== 0 || dy !== 0){
 
         me.angle = Math.atan2(dy,dx);

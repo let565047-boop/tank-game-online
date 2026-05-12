@@ -53,7 +53,7 @@ io.on("connection", (socket) => {
             isHost: pCount === 0,
             alive: true, 
             hp: 100, 
-            speed: 3.2, 
+            speed: 2,
             damage: 35
         };
         io.to(roomId).emit("update-players", gameRooms[roomId].players);
