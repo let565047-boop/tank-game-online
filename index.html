@@ -102,12 +102,22 @@
         });
 
         socket.on('spawn-items', i => items = i);
-        socket.on('game-started', (data) => {
-            maze = data.map === "RANDOM" ? generateMaze(currentRoom) : data.map;
-            document.getElementById('waiting-room').classList.add('hidden');
-            document.getElementById('game-container').classList.remove('hidden');
-            gameActive = true; gameLoop();
-        });
+       socket.on('game-started', (data) => {
+    // 1. Nhận map từ server
+    maze = data.map === "RANDOM" ? generateMaze(currentRoom) : data.map;
+    
+    // 2. Ép cập nhật danh sách người chơi ngay lập tức để hiện xe tăng
+    if (data.players) {
+        remotePlayers = data.players;
+    }
+
+    // 3. Hiện màn hình game
+    document.getElementById('waiting-room').classList.add('hidden');
+    document.getElementById('game-container').classList.remove('hidden');
+    
+    gameActive = true; 
+    gameLoop(); // Chạy vòng lặp vẽ game
+});
 
         socket.on('player-moved', d => { if(remotePlayers[d.id]) Object.assign(remotePlayers[d.id], d); });
         socket.on('new-bullet', b => { if(b.owner !== socket.id) bullets.push(b); });
