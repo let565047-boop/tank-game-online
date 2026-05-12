@@ -9,73 +9,13 @@ app.use(express.static(__dirname));
 
 let gameRooms = {};
 
-// 5 Loại bản đồ cực cháy
+// 5 Loại bản đồ Sen đã duyệt - Tui để dạng mảng cho Sen dễ nhìn
 const maps = {
     classic: "RANDOM",
-    arena: [
-        [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-        [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-        [1,0,1,1,0,0,0,0,0,0,0,1,1,0,1],
-        [1,0,1,1,0,0,0,0,0,0,0,1,1,0,1],
-        [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-        [1,0,0,0,0,1,1,1,1,1,0,0,0,0,1],
-        [1,0,0,0,0,1,0,0,0,1,0,0,0,0,1],
-        [1,0,0,0,0,1,0,0,0,1,0,0,0,0,1],
-        [1,0,0,0,0,1,1,1,1,1,0,0,0,0,1],
-        [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-        [1,0,1,1,0,0,0,0,0,0,0,1,1,0,1],
-        [1,0,1,1,0,0,0,0,0,0,0,1,1,0,1],
-        [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-        [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
-    ],
-    cross: [
-        [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-        [1,0,0,0,0,0,0,1,0,0,0,0,0,0,1],
-        [1,0,0,0,0,0,0,1,0,0,0,0,0,0,1],
-        [1,0,0,0,0,0,0,1,0,0,0,0,0,0,1],
-        [1,0,0,0,0,0,0,1,0,0,0,0,0,0,1],
-        [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-        [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-        [1,1,1,1,0,0,0,0,0,0,0,1,1,1,1],
-        [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-        [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-        [1,0,0,0,0,0,0,1,0,0,0,0,0,0,1],
-        [1,0,0,0,0,0,0,1,0,0,0,0,0,0,1],
-        [1,0,0,0,0,0,0,1,0,0,0,0,0,0,1],
-        [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
-    ],
-    zigzag: [
-        [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-        [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-        [1,1,1,1,1,1,1,1,1,1,1,1,0,0,1],
-        [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-        [1,0,0,1,1,1,1,1,1,1,1,1,1,1,1],
-        [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-        [1,1,1,1,1,1,1,1,1,1,1,1,0,0,1],
-        [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-        [1,0,0,1,1,1,1,1,1,1,1,1,1,1,1],
-        [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-        [1,1,1,1,1,1,1,1,1,1,1,1,0,0,1],
-        [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-        [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-        [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
-    ],
-    fortress: [
-        [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-        [1,0,0,0,0,0,1,1,1,0,0,0,0,0,1],
-        [1,0,1,1,0,0,0,0,0,0,0,1,1,0,1],
-        [1,0,1,1,0,1,1,0,1,1,0,1,1,0,1],
-        [1,0,0,0,0,1,0,0,0,1,0,0,0,0,1],
-        [1,0,0,1,1,1,0,0,0,1,1,1,0,0,1],
-        [1,1,0,0,0,0,0,1,0,0,0,0,0,1,1],
-        [1,1,0,0,0,0,0,1,0,0,0,0,0,1,1],
-        [1,0,0,1,1,1,0,0,0,1,1,1,0,0,1],
-        [1,0,0,0,0,1,0,0,0,1,0,0,0,0,1],
-        [1,0,1,1,0,1,1,0,1,1,0,1,1,0,1],
-        [1,0,1,1,0,0,0,0,0,0,0,1,1,0,1],
-        [1,0,0,0,0,0,1,1,1,0,0,0,0,0,1],
-        [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
-    ]
+    arena: [[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],[1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[1,0,1,1,0,0,0,0,0,0,0,1,1,0,1],[1,0,1,1,0,0,0,0,0,0,0,1,1,0,1],[1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[1,0,0,0,0,1,1,1,1,1,0,0,0,0,1],[1,0,0,0,0,1,0,0,0,1,0,0,0,0,1],[1,0,0,0,0,1,0,0,0,1,0,0,0,0,1],[1,0,0,0,0,1,1,1,1,1,0,0,0,0,1],[1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[1,0,1,1,0,0,0,0,0,0,0,1,1,0,1],[1,0,1,1,0,0,0,0,0,0,0,1,1,0,1],[1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]],
+    cross: [[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],[1,0,0,0,0,0,0,1,0,0,0,0,0,0,1],[1,0,0,0,0,0,0,1,0,0,0,0,0,0,1],[1,0,0,0,0,0,0,1,0,0,0,0,0,0,1],[1,0,0,0,0,0,0,1,0,0,0,0,0,0,1],[1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[1,1,1,1,0,0,0,0,0,0,0,1,1,1,1],[1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[1,0,0,0,0,0,0,1,0,0,0,0,0,0,1],[1,0,0,0,0,0,0,1,0,0,0,0,0,0,1],[1,0,0,0,0,0,0,1,0,0,0,0,0,0,1],[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]],
+    zigzag: [[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],[1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[1,1,1,1,1,1,1,1,1,1,1,1,0,0,1],[1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[1,0,0,1,1,1,1,1,1,1,1,1,1,1,1],[1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[1,1,1,1,1,1,1,1,1,1,1,1,0,0,1],[1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[1,0,0,1,1,1,1,1,1,1,1,1,1,1,1],[1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[1,1,1,1,1,1,1,1,1,1,1,1,0,0,1],[1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]],
+    fortress: [[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],[1,0,0,0,0,0,1,1,1,0,0,0,0,0,1],[1,0,1,1,0,0,0,0,0,0,0,1,1,0,1],[1,0,1,1,0,1,1,0,1,1,0,1,1,0,1],[1,0,0,0,0,1,0,0,0,1,0,0,0,0,1],[1,0,0,1,1,1,0,0,0,1,1,1,0,0,1],[1,1,0,0,0,0,0,1,0,0,0,0,0,1,1],[1,1,0,0,0,0,0,1,0,0,0,0,0,1,1],[1,0,0,1,1,1,0,0,0,1,1,1,0,0,1],[1,0,0,0,0,1,0,0,0,1,0,0,0,0,1],[1,0,1,1,0,1,1,0,1,1,0,1,1,0,1],[1,0,1,1,0,0,0,0,0,0,0,1,1,0,1],[1,0,0,0,0,0,1,1,1,0,0,0,0,0,1],[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]]
 };
 
 io.on("connection", (socket) => {
@@ -84,120 +24,80 @@ io.on("connection", (socket) => {
         socket.join(roomId);
         if (!gameRooms[roomId]) gameRooms[roomId] = { players: {}, items: [] };
 
-        const playersCount = Object.keys(gameRooms[roomId].players).length;
-        const isHost = playersCount === 0;
-
-        // LOGIC CHIA VỊ TRÍ 4 GÓC CHO SEN
-        let startX = 60, startY = 60; // Người 1: Góc trên trái
-        if (playersCount === 1) { startX = 540; startY = 540; } // Người 2: Góc dưới phải
-        else if (playersCount === 2) { startX = 540; startY = 60; } // Người 3: Góc trên phải
-        else if (playersCount === 3) { startX = 60; startY = 540; } // Người 4: Góc dưới trái
+        const pCount = Object.keys(gameRooms[roomId].players).length;
+        // Chia 4 góc: (60,60), (540,540), (540,60), (60,540)
+        const spawns = [{x:60,y:60},{x:540,y:540},{x:540,y:60},{x:60,y:540}];
+        const pos = spawns[pCount] || {x:300,y:300};
 
         gameRooms[roomId].players[socket.id] = {
-            id: socket.id, name: playerName, color: color,
-            x: startX, y: startY, angle: 0, isHost: isHost, alive: true, 
-            hp: 100, speed: 3, damage: 35, fireRate: 600
+            id: socket.id, name: playerName, color: color || '#ef4444',
+            x: pos.x, y: pos.y, angle: 0, isHost: pCount === 0,
+            alive: true, hp: 100, speed: 3, damage: 35
         };
         io.to(roomId).emit("update-players", gameRooms[roomId].players);
     });
 
     socket.on("start-game", (data) => {
         const { roomId, mapType } = data;
-        if (gameRooms[roomId]) {
+        const room = gameRooms[roomId];
+        if (room) {
             let finalMap = maps[mapType] || maps.classic;
-            io.to(roomId).emit("game-started", { 
-            map: finalMap, 
-            players: room.players 
-        });
-    }
-});
-            gameRooms[roomId].items = [];
+            room.items = [];
             const types = ['SPEED', 'DAMAGE', 'HEAL'];
             
-            // LOGIC RẢI VẬT PHẨM KHÔNG KẸT TƯỜNG
+            // Rải vật phẩm không kẹt tường
             for(let i=0; i<6; i++) {
-                let rx, ry, attempts = 0, found = false;
-                while(!found && attempts < 100) {
+                let rx, ry, found = false, attempts = 0;
+                while(!found && attempts < 50) {
                     rx = Math.floor(Math.random() * 13 + 1);
                     ry = Math.floor(Math.random() * 13 + 1);
-                    
-                    // Nếu map random, ô lẻ thường là đường đi
-                    if (finalMap === "RANDOM") {
-                        if (rx % 2 !== 0 && ry % 2 !== 0) found = true;
-                    } 
-                    // Nếu map cố định, check ô đó có phải số 0 không
-                    else if (finalMap[ry][rx] === 0) {
-                        found = true;
-                    }
+                    if (finalMap === "RANDOM") { if(rx%2!==0 && ry%2!==0) found = true; }
+                    else if (finalMap[ry][rx] === 0) found = true;
                     attempts++;
                 }
-
-                if (found) {
-                    gameRooms[roomId].items.push({
-                        id: Math.random(),
-                        x: rx * 40 + 20,
-                        y: ry * 40 + 20,
-                        type: types[Math.floor(Math.random() * types.length)]
-                    });
-                }
+                if (found) room.items.push({ id: Math.random(), x: rx*40+20, y: ry*40+20, type: types[Math.floor(Math.random()*3)] });
             }
-
-            io.to(roomId).emit("game-started", { 
-                map: finalMap, 
-                players: gameRooms[roomId].players 
-            });
-            io.to(roomId).emit("spawn-items", gameRooms[roomId].items);
+            io.to(roomId).emit("game-started", { map: finalMap, players: room.players });
+            io.to(roomId).emit("spawn-items", room.items);
         }
     });
 
-    socket.on("item-collected", (data) => {
-        const { roomId, itemId, type } = data;
-        if (gameRooms[roomId]) {
-            if (type === 'HEAL' && gameRooms[roomId].players[socket.id]) {
-                gameRooms[roomId].players[socket.id].hp = Math.min(100, gameRooms[roomId].players[socket.id].hp + 40);
-            }
-            gameRooms[roomId].items = gameRooms[roomId].items.filter(i => i.id !== itemId);
-            io.to(roomId).emit("spawn-items", gameRooms[roomId].items);
-            io.to(roomId).emit("update-players", gameRooms[roomId].players);
+    socket.on("move", (d) => {
+        if(gameRooms[d.roomId]?.players[socket.id]) {
+            Object.assign(gameRooms[d.roomId].players[socket.id], { x: d.x, y: d.y, angle: d.angle });
+            socket.to(d.roomId).emit("player-moved", { id: socket.id, x: d.x, y: d.y, angle: d.angle });
         }
     });
 
-    socket.on("move", (data) => {
-        const { roomId, x, y, angle } = data;
-        if (gameRooms[roomId]?.players[socket.id]) {
-            Object.assign(gameRooms[roomId].players[socket.id], { x, y, angle });
-            socket.to(roomId).emit("player-moved", { id: socket.id, x, y, angle });
+    socket.on("shoot", (b) => socket.to(b.roomId).emit("new-bullet", b));
+
+    socket.on("hit", (d) => {
+        const p = gameRooms[d.roomId]?.players[d.targetId];
+        if (p && p.alive) {
+            p.hp -= d.damage;
+            if (p.hp <= 0) { p.hp = 0; p.alive = false; io.to(d.targetId).emit("game-over", { result: "DEFEAT" }); socket.emit("game-over", { result: "VICTORY" }); }
+            io.to(d.roomId).emit("update-players", gameRooms[d.roomId].players);
         }
     });
 
-    socket.on("shoot", (bullet) => socket.to(bullet.roomId).emit("new-bullet", bullet));
-
-    socket.on("hit", (data) => {
-        const { roomId, targetId, damage } = data;
-        const room = gameRooms[roomId];
-        if (room && room.players[targetId] && room.players[targetId].alive) {
-            room.players[targetId].hp -= damage;
-            if (room.players[targetId].hp <= 0) {
-                room.players[targetId].hp = 0; 
-                room.players[targetId].alive = false;
-                io.to(targetId).emit("game-over", { result: "DEFEAT" });
-                socket.emit("game-over", { result: "VICTORY" });
-                setTimeout(() => io.to(roomId).emit("return-to-lobby"), 4000);
-            }
-            io.to(roomId).emit("update-players", room.players);
+    socket.on("item-collected", (d) => {
+        const room = gameRooms[d.roomId];
+        if (room) {
+            if (d.type === 'HEAL' && room.players[socket.id]) room.players[socket.id].hp = Math.min(100, room.players[socket.id].hp + 40);
+            room.items = room.items.filter(i => i.id !== d.itemId);
+            io.to(d.roomId).emit("spawn-items", room.items);
+            io.to(d.roomId).emit("update-players", room.players);
         }
     });
 
     socket.on("disconnect", () => {
-        for (let roomId in gameRooms) {
-            if (gameRooms[roomId].players[socket.id]) {
-                delete gameRooms[roomId].players[socket.id];
-                io.to(roomId).emit("update-players", gameRooms[roomId].players);
-                if (Object.keys(gameRooms[roomId].players).length === 0) delete gameRooms[roomId];
+        for (let rId in gameRooms) {
+            if (gameRooms[rId].players[socket.id]) {
+                delete gameRooms[rId].players[socket.id];
+                io.to(rId).emit("update-players", gameRooms[rId].players);
             }
         }
     });
 });
 
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Server chạy tại cổng ${PORT}`));
+server.listen(process.env.PORT || 3000, () => console.log("Server Online!"));

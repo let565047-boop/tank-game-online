@@ -3,172 +3,93 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Tank.io - Portrait Mobile Edition</title>
+    <title>Tank.io - Joystick Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/nipplejs/0.10.1/nipplejs.min.js"></script>
     <style>
-        body { margin: 0; background: #020617; touch-action: none; font-family: system-ui, sans-serif; color: white; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; min-height: 100vh; padding: 10px 0; }
-        
-        /* Giao diện Lobby & Waiting Room */
-        #lobby, #waiting-room { 
-            max-width: 320px; 
-            width: 90%; 
-            padding: 1.5rem; 
-            background: rgba(15, 23, 42, 0.95);
-            border-radius: 2rem;
-            border: 1px solid #1e293b;
-            margin-top: 20px;
-        }
-
-        /* Container chính khi vào trận - Chế độ dọc */
-        #game-container { 
-            display: none; 
-            flex-direction: column; 
-            align-items: center; 
-            width: 100vw; 
-            height: 100vh; 
-            gap: 15px;
-        }
-
-        /* Map hình vuông, to chiếm gần hết chiều ngang điện thoại */
-        #gameCanvas { 
-            background: #0f172a; 
-            border: 3px solid #1e293b; 
-            border-radius: 12px; 
-            width: 92vw; 
-            height: auto;
-            aspect-ratio: 1/1; 
-            box-shadow: 0 0 25px rgba(0,0,0,0.5);
-        }
-
-        /* Cụm điều hướng bên dưới map */
-        .controls-area {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 20px;
-            width: 100%;
-        }
-
-        .controls-left { 
-            display: grid; 
-            grid-template-columns: repeat(3, 1fr); 
-            gap: 10px; 
-            background: rgba(30, 41, 59, 0.5); 
-            padding: 15px; 
-            border-radius: 20px;
-        }
-
-        /* Nút bấm di chuyển */
-        .ctrl-btn { 
-            width: 55px; height: 55px; 
-            background: #334155; 
-            border-radius: 12px; 
-            display: flex; align-items: center; justify-content: center; 
-            font-size: 24px; border: none; color: white;
-            box-shadow: 0 4px 0 #1e293b;
-        }
-        .ctrl-btn:active { background: #fbbf24; transform: translateY(4px); box-shadow: none; color: #000; }
-
-        /* Nút bắn dưới cùng */
-        .shoot-btn { 
-            width: 85px; height: 85px; 
-            background: #ef4444; 
-            border-radius: 50%; 
-            border: none;
-            border-bottom: 8px solid #991b1b; 
-            font-size: 40px; 
-            display: flex; align-items: center; justify-content: center;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.4);
-        }
-        .shoot-btn:active { border-bottom: 0; transform: translateY(8px); background: #dc2626; }
-
-        #msg-box { font-size: 14px; margin-bottom: 5px; height: 20px; }
-        .color-btn { width: 35px; height: 35px; border-radius: 50%; cursor: pointer; border: 3px solid transparent; transition: 0.2s; }
-        .color-btn.active { border-color: white; transform: scale(1.2); box-shadow: 0 0 15px white; }
+        body { margin: 0; background: #020617; touch-action: none; font-family: system-ui, sans-serif; color: white; overflow: hidden; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+        #game-container { position: relative; display: flex; flex-direction: row; align-items: center; justify-content: space-between; width: 100vw; height: 100vh; padding: 0 5vmin; box-sizing: border-box; }
+        #gameCanvas { background: #0f172a; border: 2px solid #1e293b; border-radius: 12px; height: 85vmin; width: 85vmin; order: 2; }
+        #joystick-zone { width: 120px; height: 120px; order: 1; position: relative; background: rgba(255,255,255,0.05); border-radius: 50%; }
+        .controls-right { order: 3; width: 120px; display: flex; justify-content: center; }
+        .shoot-btn { width: 70px; height: 70px; background: #ef4444; border-radius: 50%; border: none; border-bottom: 6px solid #991b1b; font-size: 30px; display: flex; align-items: center; justify-content: center; }
+        .shoot-btn:active { border-bottom: 0; transform: translateY(6px); }
+        #msg-box { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.6); padding: 5px 15px; border-radius: 20px; opacity: 0; z-index: 100; font-size: 12px; }
+        @media screen and (orientation: portrait) { #game-container { flex-direction: column !important; justify-content: center; gap: 20px; } #gameCanvas { width: 80vw; height: 80vw; } }
     </style>
 </head>
 <body>
+    <div id="msg-box" class="font-bold text-amber-400">Thông báo!</div>
 
-    <div id="msg-box" class="font-bold text-amber-400 text-center"></div>
-
-    <div id="lobby" class="shadow-2xl text-center">
-        <h1 class="text-5xl font-black mb-6 text-amber-500 italic uppercase tracking-tighter">Tank.io</h1>
+    <div id="lobby" class="bg-slate-900/95 p-8 rounded-[2rem] shadow-2xl w-full max-w-sm border border-slate-800 text-center">
+        <h1 class="text-4xl font-black mb-6 text-amber-500 italic uppercase">Tank.io</h1>
         <div class="space-y-4">
-            <input id="player-name" type="text" placeholder="Tên của sen" class="w-full p-4 bg-slate-950 rounded-2xl border border-slate-800 outline-none text-white font-bold">
-            <div class="flex justify-center gap-3 mb-2">
-                <div onclick="selectColor('#ef4444', this)" class="color-btn bg-red-500 active"></div>
-                <div onclick="selectColor('#3b82f6', this)" class="color-btn bg-blue-500"></div>
-                <div onclick="selectColor('#10b981', this)" class="color-btn bg-emerald-500"></div>
-                <div onclick="selectColor('#f59e0b', this)" class="color-btn bg-amber-500"></div>
-                <div onclick="selectColor('#a855f7', this)" class="color-btn bg-purple-500"></div>
-            </div>
-            <input id="room-id" type="text" placeholder="Mã phòng" class="w-full p-4 bg-slate-950 rounded-2xl border border-slate-800 outline-none text-amber-500 font-bold">
-            <button onclick="joinRoomAction()" class="w-full bg-amber-600 text-white p-4 rounded-2xl font-black uppercase shadow-lg">Vào Phòng</button>
+            <input id="player-name" type="text" placeholder="Tên của sen" class="w-full p-4 bg-slate-950 rounded-xl border border-slate-800 outline-none text-white">
+            <input id="room-id" type="text" placeholder="Mã phòng" class="w-full p-4 bg-slate-950 rounded-xl border border-slate-800 outline-none text-amber-500">
+            <button onclick="joinRoomAction()" class="w-full bg-amber-600 p-4 rounded-xl font-bold uppercase">Vào Phòng</button>
         </div>
     </div>
 
-    <div id="waiting-room" class="hidden text-center">
-        <h2 class="text-xl font-bold mb-4 italic text-slate-300 uppercase tracking-widest">Phòng Chờ</h2>
-        <div id="player-list" class="space-y-3 mb-6 text-left"></div>
+    <div id="waiting-room" class="hidden bg-slate-900/95 p-8 rounded-[2rem] shadow-2xl w-full max-w-sm border border-slate-800 text-center">
+        <h2 class="text-xl font-bold mb-4 italic">PHÒNG CHỜ</h2>
+        <div id="player-list" class="space-y-2 mb-6 text-left"></div>
         <div id="host-controls" class="hidden border-t border-slate-800 pt-4">
-            <p class="text-xs text-slate-400 mb-2 uppercase font-bold text-left ml-2">Chọn Bản Đồ:</p>
-            <select id="map-type" class="w-full p-4 bg-slate-950 rounded-2xl border border-slate-800 text-amber-500 font-bold mb-6 outline-none">
-                <option value="classic">Mê Cung Ngẫu Nhiên</option>
-                <option value="arena">Đấu Trường (Arena)</option>
-                <option value="cross">Ngã Tư Tử Thần</option>
-                <option value="zigzag">Đường Zic-Zac</option>
-                <option value="fortress">Pháo Đài Cổ</option>
+            <select id="map-type" class="w-full p-4 bg-slate-950 rounded-xl border border-slate-800 text-amber-500 font-bold mb-4 outline-none">
+                <option value="classic">Mê Cung</option>
+                <option value="arena">Đấu Trường</option>
+                <option value="fortress">Pháo Đài</option>
             </select>
-            <button onclick="triggerStartGame()" class="w-full bg-emerald-600 p-5 rounded-2xl font-black text-xl uppercase shadow-lg">Khai Chiến!</button>
+            <button onclick="triggerStartGame()" class="w-full bg-emerald-600 p-4 rounded-xl font-black uppercase text-lg">KHAI CHIẾN!</button>
         </div>
     </div>
 
-    <div id="game-container">
+    <div id="game-container" class="hidden">
+        <div id="joystick-zone"></div>
         <canvas id="gameCanvas" width="600" height="600"></canvas>
-        
-        <div class="controls-area">
-            <div class="controls-left">
-                <div></div>
-                <button class="ctrl-btn" ontouchstart="keys['KeyW']=true" ontouchend="keys['KeyW']=false">🔼</button>
-                <div></div>
-                <button class="ctrl-btn" ontouchstart="keys['KeyA']=true" ontouchend="keys['KeyA']=false">◀️</button>
-                <button class="ctrl-btn" ontouchstart="keys['KeyS']=true" ontouchend="keys['KeyS']=false">🔽</button>
-                <button class="ctrl-btn" ontouchstart="keys['KeyD']=true" ontouchend="keys['KeyD']=false">▶️</button>
-            </div>
+        <div class="controls-right">
             <button onclick="shoot()" class="shoot-btn">💣</button>
         </div>
     </div>
 
     <script>
         const socket = io();
-        let selectedColor = '#ef4444', currentRoom, remotePlayers = {}, bullets = [], items = [], maze = [], gameActive = false, shootCooldown = false;
+        let currentRoom, remotePlayers = {}, bullets = [], items = [], maze = [], gameActive = false;
         const canvas = document.getElementById('gameCanvas'), ctx = canvas.getContext('2d');
         const keys = {};
 
         window.addEventListener('contextmenu', e => e.preventDefault());
 
-        function showMsg(t) { const b = document.getElementById('msg-box'); b.innerText = t; b.style.opacity = "1"; setTimeout(()=>b.style.opacity="0", 2000); }
-        function selectColor(c, el) { selectedColor = c; document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active')); el.classList.add('active'); }
+        socket.on('game-started', (data) => {
+            maze = data.map === "RANDOM" ? generateMaze(currentRoom) : data.map;
+            if (data.players) remotePlayers = data.players;
+            document.getElementById('waiting-room').classList.add('hidden');
+            document.getElementById('game-container').classList.remove('hidden');
+            document.getElementById('game-container').classList.add('flex');
+            gameActive = true;
+            initJoystick();
+            gameLoop();
+        });
 
-        function generateMaze(seed) {
-            const m = Array(15).fill().map(() => Array(15).fill(1));
-            let sNum = 0; for(let i=0; i<seed.length; i++) sNum += seed.charCodeAt(i);
-            const rnd = () => { sNum = (sNum * 9301 + 49297) % 233280; return sNum / 233280; };
-            function walk(x, y) {
-                m[y][x] = 0; const dirs = [[0, 2], [0, -2], [2, 0], [-2, 0]].sort(() => rnd() - 0.5);
-                for (let [dx, dy] of dirs) {
-                    let nx = x+dx, ny = y+dy;
-                    if (nx>0 && nx<14 && ny>0 && ny<14 && m[ny][nx]===1) { m[y+dy/2][x+dx/2]=0; walk(nx, ny); }
+        function initJoystick() {
+            const options = { zone: document.getElementById('joystick-zone'), mode: 'static', position: {left: '50%', top: '50%'}, color: 'white', size: 80 };
+            const manager = nipplejs.create(options);
+            manager.on('move', (evt, data) => {
+                if (data.direction) {
+                    const angle = data.angle.degree;
+                    keys['KeyW'] = angle > 45 && angle < 135;
+                    keys['KeyS'] = angle > 225 && angle < 315;
+                    keys['KeyA'] = angle > 135 && angle < 225;
+                    keys['KeyD'] = angle < 45 || angle > 315;
                 }
-            }
-            walk(1, 1); return m;
+            });
+            manager.on('end', () => { keys['KeyW'] = keys['KeyS'] = keys['KeyA'] = keys['KeyD'] = false; });
         }
 
         window.joinRoomAction = () => {
-            const rId = document.getElementById('room-id').value.trim(), pName = document.getElementById('player-name').value.trim() || "Vô danh";
+            const rId = document.getElementById('room-id').value.trim(), pName = document.getElementById('player-name').value.trim() || "Sen";
             if(!rId) return; currentRoom = rId;
-            socket.emit('join-room', { roomId: rId, playerName: pName, color: selectedColor });
+            socket.emit('join-room', { roomId: rId, playerName: pName, color: '#ef4444' });
             document.getElementById('lobby').classList.add('hidden');
             document.getElementById('waiting-room').classList.remove('hidden');
         };
@@ -177,36 +98,31 @@
             remotePlayers = p;
             document.getElementById('player-list').innerHTML = Object.values(p).map(player => `
                 <div class="p-3 bg-slate-800 rounded-xl border-l-4" style="border-left-color: ${player.color}">
-                    <span class="font-bold text-sm">${player.name} ${player.id===socket.id?'(BẠN)':''} ${player.isHost?'👑':''}</span>
+                    <span class="font-bold">${player.name} ${player.id===socket.id?'(BẠN)':''}</span>
                 </div>
             `).join('');
             if(p[socket.id]?.isHost) document.getElementById('host-controls').classList.remove('hidden');
         });
 
-        socket.on('spawn-items', i => items = i);
-        socket.on('game-started', (data) => {
-            maze = data.map === "RANDOM" ? generateMaze(currentRoom) : data.map;
-            if (data.players) remotePlayers = data.players;
-            document.getElementById('waiting-room').classList.add('hidden');
-            document.getElementById('game-container').style.display = 'flex';
-            gameActive = true; gameLoop();
-        });
-
         socket.on('player-moved', d => { if(remotePlayers[d.id]) Object.assign(remotePlayers[d.id], d); });
         socket.on('new-bullet', b => { if(b.owner !== socket.id) bullets.push(b); });
-        socket.on('game-over', d => {
-            gameActive = false;
-            setTimeout(() => {
-                ctx.fillStyle = "rgba(0,0,0,0.85)"; ctx.fillRect(0,0,600,600);
-                ctx.fillStyle = d.result === "VICTORY" ? "#10b981" : "#ef4444";
-                ctx.font = "bold 60px system-ui"; ctx.textAlign = "center"; ctx.fillText(d.result, 300, 300);
-            }, 100);
-        });
-        socket.on('return-to-lobby', () => location.reload());
+        socket.on('spawn-items', i => items = i);
+        socket.on('game-over', d => { alert(d.result); location.reload(); });
 
-        function triggerStartGame() {
-            const mType = document.getElementById('map-type').value;
-            socket.emit('start-game', { roomId: currentRoom, mapType: mType });
+        function generateMaze(seed) {
+            const m = Array(15).fill().map(() => Array(15).fill(1));
+            let sNum = 0; for(let i=0; i<seed.length; i++) sNum += seed.charCodeAt(i);
+            const rnd = () => { sNum = (sNum * 9301 + 49297) % 233280; return sNum / 233280; };
+            function walk(x, y) { m[y][x] = 0; const dirs = [[0, 2], [0, -2], [2, 0], [-2, 0]].sort(() => rnd() - 0.5); for (let [dx, dy] of dirs) { let nx = x+dx, ny = y+dy; if (nx>0 && nx<14 && ny>0 && ny<14 && m[ny][nx]===1) { m[y+dy/2][x+dx/2]=0; walk(nx, ny); } } }
+            walk(1, 1); return m;
+        }
+
+        function triggerStartGame() { socket.emit('start-game', { roomId: currentRoom, mapType: document.getElementById('map-type').value }); }
+        function shoot() {
+            const me = remotePlayers[socket.id];
+            if (!gameActive || !me?.alive) return;
+            const b = { x: me.x + Math.cos(me.angle)*25, y: me.y + Math.sin(me.angle)*25, vx: Math.cos(me.angle)*6, vy: Math.sin(me.angle)*6, owner: socket.id, roomId: currentRoom, damage: 35, traveled: 0 };
+            socket.emit('shoot', b); bullets.push(b);
         }
 
         function canMoveTo(nx, ny) {
@@ -218,52 +134,28 @@
             return true;
         }
 
-        function shoot() {
-            const me = remotePlayers[socket.id];
-            if (shootCooldown || !gameActive || !me?.alive) return;
-            shootCooldown = true; setTimeout(() => shootCooldown = false, me.fireRate);
-            const b = { x: me.x + Math.cos(me.angle)*25, y: me.y + Math.sin(me.angle)*25, vx: Math.cos(me.angle)*6, vy: Math.sin(me.angle)*6, owner: socket.id, roomId: currentRoom, damage: me.damage, traveled: 0 };
-            socket.emit('shoot', b); bullets.push(b);
-        }
-
-        window.addEventListener('keydown', e => keys[e.code] = true);
-        window.addEventListener('keyup', e => keys[e.code] = false);
-
         function update() {
             const me = remotePlayers[socket.id];
             if (!gameActive || !me?.alive) return;
             let dx = 0, dy = 0;
-            if (keys['ArrowUp'] || keys['KeyW']) dy = -me.speed;
-            if (keys['ArrowDown'] || keys['KeyS']) dy = me.speed;
-            if (keys['ArrowLeft'] || keys['KeyA']) dx = -me.speed;
-            if (keys['ArrowRight'] || keys['KeyD']) dx = me.speed;
+            if (keys['KeyW']) dy = -me.speed; if (keys['KeyS']) dy = me.speed;
+            if (keys['KeyA']) dx = -me.speed; if (keys['KeyD']) dx = me.speed;
 
             if (dx !== 0 || dy !== 0) {
                 const nx = me.x+dx, ny = me.y+dy, angle = Math.atan2(dy, dx);
-                let moved = false;
-                if (canMoveTo(nx, me.y)) { me.x = nx; moved = true; }
-                if (canMoveTo(me.x, ny)) { me.y = ny; moved = true; }
-                if (moved) { me.angle = angle; socket.emit('move', { roomId: currentRoom, x: me.x, y: me.y, angle: me.angle }); }
+                if (canMoveTo(nx, me.y)) me.x = nx;
+                if (canMoveTo(me.x, ny)) me.y = ny;
+                me.angle = angle;
+                socket.emit('move', { roomId: currentRoom, x: me.x, y: me.y, angle: me.angle });
             }
 
-            items.forEach((item, index) => {
-                if (Math.sqrt((me.x - item.x)**2 + (me.y - item.y)**2) < 30) {
-                    if (item.type === 'SPEED') { me.speed = 5.5; showMsg("⚡ TĂNG TỐC!"); setTimeout(()=>me.speed=3, 5000); }
-                    if (item.type === 'DAMAGE') { me.damage = 60; showMsg("🔥 TĂNG DAME!"); setTimeout(()=>me.damage=35, 5000); }
-                    if (item.type === 'HEAL') { me.hp = Math.min(100, me.hp + 40); showMsg("💚 HỒI MÁU!"); }
-                    socket.emit('item-collected', { roomId: currentRoom, itemId: item.id, type: item.type });
-                    items.splice(index, 1);
-                }
-            });
-
             for (let i = bullets.length - 1; i >= 0; i--) {
-                const b = bullets[i];
-                b.x += b.vx; b.y += b.vy; b.traveled += Math.sqrt(b.vx**2 + b.vy**2);
+                const b = bullets[i]; b.x += b.vx; b.y += b.vy; b.traveled += 6;
                 if (b.traveled > 320 || !canMoveTo(b.x, b.y)) { bullets.splice(i, 1); continue; }
                 if (b.owner === socket.id) {
                     Object.values(remotePlayers).forEach(p => {
                         if (p.id !== socket.id && p.alive && Math.sqrt((b.x - p.x)**2 + (b.y - p.y)**2) < 22) {
-                            socket.emit('hit', { roomId: currentRoom, targetId: p.id, damage: b.damage });
+                            socket.emit('hit', { roomId: currentRoom, targetId: p.id, damage: 35 });
                             bullets.splice(i, 1);
                         }
                     });
@@ -275,20 +167,12 @@
             ctx.clearRect(0, 0, 600, 600);
             ctx.fillStyle = '#1e293b';
             for (let y = 0; y < 15; y++) for (let x = 0; x < 15; x++) if (maze[y][x] === 1) ctx.fillRect(x*40, y*40, 40, 40);
-            items.forEach(it => {
-                const colors = { SPEED: '#0ea5e9', DAMAGE: '#f43f5e', HEAL: '#10b981' };
-                ctx.fillStyle = colors[it.type]; ctx.beginPath(); ctx.arc(it.x, it.y, 12, 0, Math.PI*2); ctx.fill();
-                ctx.fillStyle = "white"; ctx.font = "bold 10px Arial"; ctx.fillText(it.type[0], it.x-3, it.y+3);
-            });
             Object.values(remotePlayers).forEach(p => {
                 if (!p.alive) return;
                 ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.angle);
                 ctx.fillStyle = p.color; ctx.fillRect(-15, -12, 30, 24);
                 ctx.fillStyle = '#000'; ctx.fillRect(0, -3, 20, 6);
                 ctx.restore();
-                ctx.fillStyle = "#334155"; ctx.fillRect(p.x - 20, p.y - 35, 40, 6);
-                ctx.fillStyle = p.id === socket.id ? "#10b981" : "#ef4444";
-                ctx.fillRect(p.x - 20, p.y - 35, (p.hp/100)*40, 6);
                 ctx.fillStyle = 'white'; ctx.font = "bold 10px Arial"; ctx.textAlign = 'center'; ctx.fillText(p.name, p.x, p.y - 42);
             });
             ctx.fillStyle = '#fbbf24'; bullets.forEach(b => { ctx.beginPath(); ctx.arc(b.x, b.y, 4, 0, Math.PI*2); ctx.fill(); });
