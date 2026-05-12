@@ -64,10 +64,13 @@
             <h2 class="text-xl font-bold mb-4 italic text-slate-300">PHÒNG CHỜ</h2>
             <div id="player-list" class="space-y-2 mb-6 text-left"></div>
             <div id="host-controls" class="hidden border-t border-slate-800 pt-4">
-                <select id="map-type" class="w-full p-4 bg-slate-950 rounded-xl border border-slate-800 text-amber-500 font-bold mb-4 outline-none">
-                    <option value="classic">Mê Cung</option>
-                    <option value="arena">Đấu Trường</option>
-                </select>
+               <select id="map-type" class="w-full p-4 bg-slate-950 rounded-xl border border-slate-800 text-amber-500 font-bold mb-4 outline-none">
+    <option value="classic">Classic</option>
+    <option value="arena">Arena</option>
+    <option value="cross">Cross</option>
+    <option value="zigzag">Zigzag</option>
+    <option value="fortress">Fortress</option>
+</select>
                 <button onclick="triggerStartGame()" class="w-full bg-emerald-600 p-4 rounded-xl font-black uppercase text-lg">KHAI CHIẾN!</button>
             </div>
         </div>
@@ -155,15 +158,44 @@
 
         socket.on('player-moved', d => { if(remotePlayers[d.id]) Object.assign(remotePlayers[d.id], d); });
         socket.on('bullets-update', b => { bullets = b; });
-        socket.on('items-update', i => { items = i; });
+       socket.on('spawn-items', i => { 
+    items = i; 
+});
 
-        function update() {
-            const me = remotePlayers[socket.id];
-            if (!gameActive || !me?.alive) return;
-            // Di chuyển và xử lý logic client nếu cần...
-        }
+       function update() {
+    const me = remotePlayers[socket.id];
+    if (!gameActive || !me?.alive) return;
+
+    let dx = 0;
+    let dy = 0;
+
+    if (keys['KeyW']) dy -= me.speed;
+    if (keys['KeyS']) dy += me.speed;
+    if (keys['KeyA']) dx -= me.speed;
+    if (keys['KeyD']) dx += me.speed;
+
+    me.x += dx;
+    me.y += dy;
+
+    if (dx !== 0 || dy !== 0) {
+        me.angle = Math.atan2(dy, dx);
+    }
+
+    socket.emit('move', {
+        roomId: currentRoom,
+        x: me.x,
+        y: me.y,
+        angle: me.angle
+    });
+}
 
         function draw() {
+            ctx.fillStyle = '#fbbf24';
+bullets.forEach(b => { 
+    ctx.beginPath(); 
+    ctx.arc(b.x, b.y, 4, 0, Math.PI*2); 
+    ctx.fill(); 
+});
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             // Vẽ Map
             ctx.fillStyle = '#1e293b';
