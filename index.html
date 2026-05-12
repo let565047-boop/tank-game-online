@@ -19,7 +19,7 @@
         <h1 class="text-5xl font-black mb-8 text-center text-amber-500 italic uppercase">Tank.io</h1>
         <div class="space-y-4">
             <input id="player-name" type="text" placeholder="Tên của sen" class="w-full p-4 bg-slate-950 rounded-2xl border border-slate-800 outline-none text-white font-bold">
-            <input id="room-id" type="text" placeholder="Mã phòng" class="w-full p-4 bg-slate-950 rounded-2xl border border-slate-800 outline-none text-amber-500 font-bold">
+            <input id="room-id" type="text" placeholder="Mã phòng (Ví dụ: 123)" class="w-full p-4 bg-slate-950 rounded-2xl border border-slate-800 outline-none text-amber-500 font-bold">
             <button onclick="joinRoomAction()" class="w-full bg-amber-600 text-white p-4 rounded-2xl font-black hover:bg-amber-500 transition shadow-lg uppercase">Vào Phòng</button>
         </div>
     </div>
@@ -52,13 +52,21 @@
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
 
+        // Hàm tạo mê cung đồng bộ giữa các máy dựa trên Room ID (Seed)
         function generateMaze(seed) {
             const m = Array(MAZE_SIZE).fill().map(() => Array(MAZE_SIZE).fill(1));
-            let randomCounter = seed.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
-            const seededRandom = (s) => { let x = Math.sin(s++) * 10000; return x - Math.floor(x); };
+            // Biến mã phòng thành số để làm seed
+            let seedNum = 0;
+            for (let i = 0; i < seed.length; i++) seedNum += seed.charCodeAt(i);
+            
+            const seededRandom = () => {
+                seedNum = (seedNum * 9301 + 49297) % 233280;
+                return seedNum / 233280;
+            };
+
             function walk(x, y) {
                 m[y][x] = 0;
-                const dirs = [[0, 2], [0, -2], [2, 0], [-2, 0]].sort(() => seededRandom(randomCounter++) - 0.5);
+                const dirs = [[0, 2], [0, -2], [2, 0], [-2, 0]].sort(() => seededRandom() - 0.5);
                 for (let [dx, dy] of dirs) {
                     let nx = x + dx, ny = y + dy;
                     if (nx > 0 && nx < MAZE_SIZE && ny > 0 && ny < MAZE_SIZE && m[ny][nx] === 1) {
@@ -72,10 +80,10 @@
         window.joinRoomAction = () => {
             const rId = document.getElementById('room-id').value.trim();
             const pName = document.getElementById('player-name').value.trim() || "Vô danh";
-            if(!rId) return;
+            if(!rId) return alert("Nhập mã phòng đã sen ơi!");
             
             currentRoom = rId;
-            maze = generateMaze(rId);
+            maze = generateMaze(rId); // Mê cung sẽ giống nhau nếu cùng mã phòng
             
             socket.emit('join-room', { 
                 roomId: rId, 
@@ -97,7 +105,7 @@
                 const li = document.createElement('div');
                 li.className = "p-3 bg-slate-800 rounded-xl border-l-4";
                 li.style.borderLeftColor = p.color;
-                li.innerHTML = `<span class="font-bold">${p.name} ${p.id === socket.id ? '(BẠN)' : ''}</span>`;
+                li.innerHTML = `<span class="font-bold">${p.name} ${p.id === socket.id ? '(BẠN)' : ''} ${p.isHost ? '👑' : ''}</span>`;
                 list.appendChild(li);
                 if(p.id === socket.id && p.isHost) isHost = true;
             });
@@ -122,19 +130,31 @@
             }
         });
 
-        socket.on('new-bullet', (b) => bullets.push(b));
+        socket.on('new-bullet', (b) => {
+            if (b.owner !== socket.id) bullets.push(b);
+        });
+
+        socket.on('player-hit', (targetId) => {
+            if (remotePlayers[targetId]) {
+                remotePlayers[targetId].alive = false;
+                if (targetId === socket.id) {
+                    alert("Sen đã bị tiêu diệt! F5 để phục thù.");
+                    gameActive = false;
+                }
+            }
+        });
 
         function triggerStartGame() {
             socket.emit('start-game', currentRoom);
         }
 
         function canMoveTo(nx, ny) {
-            const p = 12; // Bo góc xe tăng
+            const p = 12;
             const pts = [{x:nx-p,y:ny-p}, {x:nx+p,y:ny-p}, {x:nx-p,y:ny+p}, {x:nx+p,y:ny+p}];
             for (let pt of pts) {
                 const tx = Math.floor(pt.x / TILE_SIZE);
                 const ty = Math.floor(pt.y / TILE_SIZE);
-                if (maze[ty] && maze[ty][tx] === 1) return false;
+                if (!maze[ty] || maze[ty][tx] === 1) return false;
             }
             return true;
         }
@@ -166,7 +186,7 @@
             if (!gameActive || !me?.alive) return;
 
             let dx = 0, dy = 0;
-            const speed = 3.5;
+            const speed = 3;
             if (keys['ArrowUp'] || keys['KeyW']) dy = -speed;
             if (keys['ArrowDown'] || keys['KeyS']) dy = speed;
             if (keys['ArrowLeft'] || keys['KeyA']) dx = -speed;
@@ -184,9 +204,14 @@
                 }
             }
 
-            bullets.forEach((b, i) => {
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                const b = bullets[i];
                 b.x += b.vx; b.y += b.vy;
-                if(!canMoveTo(b.x, b.y)) { bullets.splice(i, 1); return; }
+                
+                if(!canMoveTo(b.x, b.y)) {
+                    bullets.splice(i, 1);
+                    continue;
+                }
                 
                 if (b.owner === socket.id) {
                     Object.values(remotePlayers).forEach(p => {
@@ -199,7 +224,7 @@
                         }
                     });
                 }
-            });
+            }
         }
 
         function draw() {
@@ -217,7 +242,7 @@
                 ctx.fillStyle = p.color; ctx.fillRect(-15, -12, 30, 24);
                 ctx.fillStyle = '#000'; ctx.fillRect(0, -3, 20, 6);
                 ctx.restore();
-                ctx.fillStyle = 'white'; ctx.textAlign = 'center';
+                ctx.fillStyle = 'white'; ctx.font = "bold 12px Arial"; ctx.textAlign = 'center';
                 ctx.fillText(p.name, p.x, p.y - 25);
             });
             ctx.fillStyle = '#fbbf24';
