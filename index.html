@@ -3,157 +3,133 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Tank Maze Warrior - Realtime</title>
+    <title>Tank.io - Ultimate Edition</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="/socket.io/socket.io.js"></script>
     <style>
         body { margin: 0; background: #020617; touch-action: none; font-family: system-ui, sans-serif; color: white; overflow: hidden; }
         #gameCanvas { background: #0f172a; display: block; margin: auto; max-width: 95vw; max-height: 60vh; border: 4px solid #1e293b; border-radius: 16px; }
-        .joystick-base { width: 110px; height: 110px; background: rgba(255,255,255,0.05); border: 2px solid rgba(255,255,255,0.15); border-radius: 50%; position: relative; }
-        .joystick-stick { width: 45px; height: 45px; background: rgba(255,255,255,0.3); border-radius: 50%; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); }
+        .color-btn { width: 35px; height: 35px; border-radius: 50%; cursor: pointer; border: 3px solid transparent; transition: 0.2s; }
+        .color-btn.active { border-color: white; transform: scale(1.2); box-shadow: 0 0 15px white; }
+        #msg-box { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.6); padding: 10px 20px; border-radius: 20px; opacity: 0; transition: 0.5s; z-index: 100; pointer-events: none; }
     </style>
 </head>
 <body class="flex flex-col items-center justify-center min-h-screen p-2">
+
+    <div id="msg-box" class="font-bold text-amber-400">Thông báo!</div>
 
     <div id="lobby" class="bg-slate-900/90 p-8 rounded-[2rem] shadow-2xl w-full max-w-sm border border-slate-800">
         <h1 class="text-5xl font-black mb-8 text-center text-amber-500 italic uppercase">Tank.io</h1>
         <div class="space-y-4">
             <input id="player-name" type="text" placeholder="Tên của sen" class="w-full p-4 bg-slate-950 rounded-2xl border border-slate-800 outline-none text-white font-bold">
-            <input id="room-id" type="text" placeholder="Mã phòng (Ví dụ: 123)" class="w-full p-4 bg-slate-950 rounded-2xl border border-slate-800 outline-none text-amber-500 font-bold">
-            <button onclick="joinRoomAction()" class="w-full bg-amber-600 text-white p-4 rounded-2xl font-black hover:bg-amber-500 transition shadow-lg uppercase">Vào Phòng</button>
+            
+            <p class="text-xs text-slate-400 ml-2 uppercase font-bold">Chọn Skin:</p>
+            <div class="flex justify-center gap-3 mb-2">
+                <div onclick="selectColor('#ef4444', this)" class="color-btn bg-red-500 active"></div>
+                <div onclick="selectColor('#3b82f6', this)" class="color-btn bg-blue-500"></div>
+                <div onclick="selectColor('#10b981', this)" class="color-btn bg-emerald-500"></div>
+                <div onclick="selectColor('#f59e0b', this)" class="color-btn bg-amber-500"></div>
+                <div onclick="selectColor('#a855f7', this)" class="color-btn bg-purple-500"></div>
+            </div>
+
+            <input id="room-id" type="text" placeholder="Mã phòng" class="w-full p-4 bg-slate-950 rounded-2xl border border-slate-800 outline-none text-amber-500 font-bold">
+            <button onclick="joinRoomAction()" class="w-full bg-amber-600 text-white p-4 rounded-2xl font-black uppercase hover:bg-amber-500 transition shadow-lg">Vào Phòng</button>
         </div>
     </div>
 
     <div id="waiting-room" class="hidden bg-slate-900/90 p-8 rounded-[2rem] shadow-2xl w-full max-w-sm border border-slate-800 text-center">
-        <h2 class="text-xl font-bold mb-4">Đang chờ đồng đội...</h2>
-        <div id="player-list" class="space-y-3 mb-8 text-left"></div>
-        <button id="start-game-btn" onclick="triggerStartGame()" class="hidden w-full bg-emerald-600 p-5 rounded-2xl font-black text-xl uppercase">Khai chiến!</button>
+        <h2 class="text-xl font-bold mb-4 italic text-slate-300">PHÒNG CHỜ</h2>
+        <div id="player-list" class="space-y-3 mb-6 text-left"></div>
+        
+        <div id="host-controls" class="hidden border-t border-slate-800 pt-4">
+            <p class="text-xs text-slate-400 mb-2 uppercase font-bold text-left ml-2">Chọn Bản Đồ:</p>
+            <select id="map-type" class="w-full p-4 bg-slate-950 rounded-2xl border border-slate-800 text-amber-500 font-bold mb-6 outline-none cursor-pointer">
+                <option value="classic">Mê Cung Ngẫu Nhiên</option>
+                <option value="arena">Đấu Trường (Arena)</option>
+                <option value="cross">Ngã Tư Tử Thần</option>
+                <option value="zigzag">Đường Zic-Zac</option>
+                <option value="fortress">Pháo Đài Cổ</option>
+            </select>
+            <button onclick="triggerStartGame()" class="w-full bg-emerald-600 p-5 rounded-2xl font-black text-xl uppercase hover:bg-emerald-500 transition shadow-lg">KHAI CHIẾN!</button>
+        </div>
     </div>
 
     <div id="game-container" class="hidden relative w-full flex flex-col items-center">
         <canvas id="gameCanvas" width="600" height="600"></canvas>
-        <div class="w-full flex justify-between items-center mt-10 px-6 max-w-[640px]">
-            <div id="joystick-zone" class="joystick-base"><div id="joystick-stick" class="joystick-stick"></div></div>
-            <button onclick="shoot()" class="w-24 h-24 bg-red-600 rounded-[2rem] border-b-[10px] border-red-900 flex items-center justify-center active:border-b-0 active:translate-y-2"><span class="text-4xl">💣</span></button>
+        <div class="mt-8">
+            <button onclick="shoot()" class="w-24 h-24 bg-red-600 rounded-[2.5rem] border-b-[10px] border-red-900 active:border-b-0 active:translate-y-2 flex items-center justify-center text-4xl shadow-xl">💣</button>
         </div>
     </div>
 
     <script>
         const socket = io();
-        const TILE_SIZE = 40;
-        const MAZE_SIZE = 15;
-        let currentRoom = null;
-        let remotePlayers = {};
-        let bullets = [];
-        let maze = []; 
-        let gameActive = false;
-        let shootCooldown = false;
+        let selectedColor = '#ef4444', currentRoom, remotePlayers = {}, bullets = [], items = [], maze = [], gameActive = false, shootCooldown = false;
+        const canvas = document.getElementById('gameCanvas'), ctx = canvas.getContext('2d');
 
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
+        function showMsg(t) { const b = document.getElementById('msg-box'); b.innerText = t; b.style.opacity = "1"; setTimeout(()=>b.style.opacity="0", 2000); }
+        function selectColor(c, el) { selectedColor = c; document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active')); el.classList.add('active'); }
 
-        // Hàm tạo mê cung đồng bộ giữa các máy dựa trên Room ID (Seed)
         function generateMaze(seed) {
-            const m = Array(MAZE_SIZE).fill().map(() => Array(MAZE_SIZE).fill(1));
-            // Biến mã phòng thành số để làm seed
-            let seedNum = 0;
-            for (let i = 0; i < seed.length; i++) seedNum += seed.charCodeAt(i);
-            
-            const seededRandom = () => {
-                seedNum = (seedNum * 9301 + 49297) % 233280;
-                return seedNum / 233280;
-            };
-
+            const m = Array(15).fill().map(() => Array(15).fill(1));
+            let sNum = 0; for(let i=0; i<seed.length; i++) sNum += seed.charCodeAt(i);
+            const rnd = () => { sNum = (sNum * 9301 + 49297) % 233280; return sNum / 233280; };
             function walk(x, y) {
-                m[y][x] = 0;
-                const dirs = [[0, 2], [0, -2], [2, 0], [-2, 0]].sort(() => seededRandom() - 0.5);
+                m[y][x] = 0; const dirs = [[0, 2], [0, -2], [2, 0], [-2, 0]].sort(() => rnd() - 0.5);
                 for (let [dx, dy] of dirs) {
-                    let nx = x + dx, ny = y + dy;
-                    if (nx > 0 && nx < MAZE_SIZE && ny > 0 && ny < MAZE_SIZE && m[ny][nx] === 1) {
-                        m[y + dy / 2][x + dx / 2] = 0; walk(nx, ny);
-                    }
+                    let nx = x+dx, ny = y+dy;
+                    if (nx>0 && nx<14 && ny>0 && ny<14 && m[ny][nx]===1) { m[y+dy/2][x+dx/2]=0; walk(nx, ny); }
                 }
             }
             walk(1, 1); return m;
         }
 
         window.joinRoomAction = () => {
-            const rId = document.getElementById('room-id').value.trim();
-            const pName = document.getElementById('player-name').value.trim() || "Vô danh";
-            if(!rId) return alert("Nhập mã phòng đã sen ơi!");
-            
-            currentRoom = rId;
-            maze = generateMaze(rId); // Mê cung sẽ giống nhau nếu cùng mã phòng
-            
-            socket.emit('join-room', { 
-                roomId: rId, 
-                playerName: pName,
-                color: `hsl(${Math.random() * 360}, 70%, 50%)`
-            });
-
+            const rId = document.getElementById('room-id').value.trim(), pName = document.getElementById('player-name').value.trim() || "Vô danh";
+            if(!rId) return; currentRoom = rId;
+            socket.emit('join-room', { roomId: rId, playerName: pName, color: selectedColor });
             document.getElementById('lobby').classList.add('hidden');
             document.getElementById('waiting-room').classList.remove('hidden');
         };
 
-        socket.on('update-players', (players) => {
-            remotePlayers = players;
-            const list = document.getElementById('player-list');
-            list.innerHTML = '';
-            let isHost = false;
-            
-            Object.values(players).forEach(p => {
-                const li = document.createElement('div');
-                li.className = "p-3 bg-slate-800 rounded-xl border-l-4";
-                li.style.borderLeftColor = p.color;
-                li.innerHTML = `<span class="font-bold">${p.name} ${p.id === socket.id ? '(BẠN)' : ''} ${p.isHost ? '👑' : ''}</span>`;
-                list.appendChild(li);
-                if(p.id === socket.id && p.isHost) isHost = true;
-            });
-
-            if(isHost && Object.keys(players).length >= 1) {
-                document.getElementById('start-game-btn').classList.remove('hidden');
-            }
+        socket.on('update-players', p => {
+            remotePlayers = p;
+            document.getElementById('player-list').innerHTML = Object.values(p).map(player => `
+                <div class="p-3 bg-slate-800 rounded-xl border-l-4" style="border-left-color: ${player.color}">
+                    <span class="font-bold">${player.name} ${player.id===socket.id?'(BẠN)':''} ${player.isHost?'👑':''}</span>
+                </div>
+            `).join('');
+            if(p[socket.id]?.isHost) document.getElementById('host-controls').classList.remove('hidden');
         });
 
-        socket.on('game-started', () => {
+        socket.on('spawn-items', i => items = i);
+        socket.on('game-started', (data) => {
+            maze = data.map === "RANDOM" ? generateMaze(currentRoom) : data.map;
             document.getElementById('waiting-room').classList.add('hidden');
             document.getElementById('game-container').classList.remove('hidden');
-            gameActive = true;
-            gameLoop();
+            gameActive = true; gameLoop();
         });
 
-        socket.on('player-moved', (data) => {
-            if(remotePlayers[data.id]) {
-                remotePlayers[data.id].x = data.x;
-                remotePlayers[data.id].y = data.y;
-                remotePlayers[data.id].angle = data.angle;
-            }
+        socket.on('player-moved', d => { if(remotePlayers[d.id]) Object.assign(remotePlayers[d.id], d); });
+        socket.on('new-bullet', b => { if(b.owner !== socket.id) bullets.push(b); });
+        socket.on('game-over', d => {
+            gameActive = false;
+            setTimeout(() => {
+                ctx.fillStyle = "rgba(0,0,0,0.85)"; ctx.fillRect(0,0,600,600);
+                ctx.fillStyle = d.result === "VICTORY" ? "#10b981" : "#ef4444";
+                ctx.font = "bold 60px system-ui"; ctx.textAlign = "center"; ctx.fillText(d.result, 300, 300);
+            }, 100);
         });
-
-        socket.on('new-bullet', (b) => {
-            if (b.owner !== socket.id) bullets.push(b);
-        });
-
-        socket.on('player-hit', (targetId) => {
-            if (remotePlayers[targetId]) {
-                remotePlayers[targetId].alive = false;
-                if (targetId === socket.id) {
-                    alert("Sen đã bị tiêu diệt! F5 để phục thù.");
-                    gameActive = false;
-                }
-            }
-        });
+        socket.on('return-to-lobby', () => location.reload());
 
         function triggerStartGame() {
-            socket.emit('start-game', currentRoom);
+            const mType = document.getElementById('map-type').value;
+            socket.emit('start-game', { roomId: currentRoom, mapType: mType });
         }
 
         function canMoveTo(nx, ny) {
-            const p = 12;
-            const pts = [{x:nx-p,y:ny-p}, {x:nx+p,y:ny-p}, {x:nx-p,y:ny+p}, {x:nx+p,y:ny+p}];
+            const p = 12; const pts = [{x:nx-p,y:ny-p}, {x:nx+p,y:ny-p}, {x:nx-p,y:ny+p}, {x:nx+p,y:ny+p}];
             for (let pt of pts) {
-                const tx = Math.floor(pt.x / TILE_SIZE);
-                const ty = Math.floor(pt.y / TILE_SIZE);
+                const tx = Math.floor(pt.x / 40), ty = Math.floor(pt.y / 40);
                 if (!maze[ty] || maze[ty][tx] === 1) return false;
             }
             return true;
@@ -162,65 +138,60 @@
         function shoot() {
             const me = remotePlayers[socket.id];
             if (shootCooldown || !gameActive || !me?.alive) return;
-            shootCooldown = true;
-            setTimeout(() => shootCooldown = false, 600);
-
-            const b = {
-                x: me.x + Math.cos(me.angle) * 25,
-                y: me.y + Math.sin(me.angle) * 25,
-                vx: Math.cos(me.angle) * 6,
-                vy: Math.sin(me.angle) * 6,
-                owner: socket.id,
-                roomId: currentRoom
+            shootCooldown = true; setTimeout(() => shootCooldown = false, me.fireRate);
+            const b = { 
+                x: me.x + Math.cos(me.angle)*25, y: me.y + Math.sin(me.angle)*25, 
+                vx: Math.cos(me.angle)*6, vy: Math.sin(me.angle)*6, 
+                owner: socket.id, roomId: currentRoom, damage: me.damage,
+                traveled: 0 
             };
-            socket.emit('shoot', b);
-            bullets.push(b);
+            socket.emit('shoot', b); bullets.push(b);
         }
 
         const keys = {};
-        window.addEventListener('keydown', e => { keys[e.code] = true; if(e.code==='Space') shoot(); });
+        window.addEventListener('keydown', e => keys[e.code] = true);
         window.addEventListener('keyup', e => keys[e.code] = false);
 
         function update() {
             const me = remotePlayers[socket.id];
             if (!gameActive || !me?.alive) return;
-
             let dx = 0, dy = 0;
-            const speed = 3;
-            if (keys['ArrowUp'] || keys['KeyW']) dy = -speed;
-            if (keys['ArrowDown'] || keys['KeyS']) dy = speed;
-            if (keys['ArrowLeft'] || keys['KeyA']) dx = -speed;
-            if (keys['ArrowRight'] || keys['KeyD']) dx = speed;
+            if (keys['ArrowUp'] || keys['KeyW']) dy = -me.speed;
+            if (keys['ArrowDown'] || keys['KeyS']) dy = me.speed;
+            if (keys['ArrowLeft'] || keys['KeyA']) dx = -me.speed;
+            if (keys['ArrowRight'] || keys['KeyD']) dx = me.speed;
 
             if (dx !== 0 || dy !== 0) {
-                const newX = me.x + dx; const newY = me.y + dy;
-                const angle = Math.atan2(dy, dx);
-                let changed = false;
-                if (canMoveTo(newX, me.y)) { me.x = newX; changed = true; }
-                if (canMoveTo(me.x, newY)) { me.y = newY; changed = true; }
-                if (changed) {
-                    me.angle = angle;
-                    socket.emit('move', { roomId: currentRoom, x: me.x, y: me.y, angle: me.angle });
-                }
+                const nx = me.x+dx, ny = me.y+dy, angle = Math.atan2(dy, dx);
+                let moved = false;
+                if (canMoveTo(nx, me.y)) { me.x = nx; moved = true; }
+                if (canMoveTo(me.x, ny)) { me.y = ny; moved = true; }
+                if (moved) { me.angle = angle; socket.emit('move', { roomId: currentRoom, x: me.x, y: me.y, angle: me.angle }); }
             }
+
+            items.forEach((item, index) => {
+                if (Math.sqrt((me.x - item.x)**2 + (me.y - item.y)**2) < 30) {
+                    if (item.type === 'SPEED') { me.speed = 5.5; showMsg("⚡ TĂNG TỐC!"); setTimeout(()=>me.speed=3, 5000); }
+                    if (item.type === 'DAMAGE') { me.damage = 60; showMsg("🔥 TĂNG DAME!"); setTimeout(()=>me.damage=35, 5000); }
+                    if (item.type === 'HEAL') { me.hp = Math.min(100, me.hp + 40); showMsg("💚 HỒI MÁU!"); }
+                   socket.emit('item-collected', { roomId: currentRoom, itemId: item.id, type: item.type });
+                }
+            });
 
             for (let i = bullets.length - 1; i >= 0; i--) {
                 const b = bullets[i];
                 b.x += b.vx; b.y += b.vy;
-                
-                if(!canMoveTo(b.x, b.y)) {
-                    bullets.splice(i, 1);
-                    continue;
+                b.traveled += Math.sqrt(b.vx**2 + b.vy**2);
+
+                if (b.traveled > 320 || !canMoveTo(b.x, b.y)) {
+                    bullets.splice(i, 1); continue;
                 }
-                
+
                 if (b.owner === socket.id) {
                     Object.values(remotePlayers).forEach(p => {
-                        if (p.id !== socket.id && p.alive) {
-                            const d = Math.sqrt((b.x - p.x)**2 + (b.y - p.y)**2);
-                            if (d < 20) {
-                                socket.emit('hit', { roomId: currentRoom, targetId: p.id });
-                                bullets.splice(i, 1);
-                            }
+                        if (p.id !== socket.id && p.alive && Math.sqrt((b.x - p.x)**2 + (b.y - p.y)**2) < 22) {
+                            socket.emit('hit', { roomId: currentRoom, targetId: p.id, damage: b.damage });
+                            bullets.splice(i, 1);
                         }
                     });
                 }
@@ -228,31 +199,31 @@
         }
 
         function draw() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = '#334155';
-            for (let y = 0; y < MAZE_SIZE; y++) {
-                for (let x = 0; x < MAZE_SIZE; x++) {
-                    if (maze[y][x] === 1) ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-                }
-            }
+            ctx.clearRect(0, 0, 600, 600);
+            ctx.fillStyle = '#1e293b';
+            for (let y = 0; y < 15; y++) for (let x = 0; x < 15; x++) if (maze[y][x] === 1) ctx.fillRect(x*40, y*40, 40, 40);
+            
+            items.forEach(it => {
+                const colors = { SPEED: '#0ea5e9', DAMAGE: '#f43f5e', HEAL: '#10b981' };
+                ctx.fillStyle = colors[it.type]; ctx.beginPath(); ctx.arc(it.x, it.y, 12, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = "white"; ctx.font = "bold 12px Arial"; ctx.fillText(it.type[0], it.x-4, it.y+4);
+            });
+
             Object.values(remotePlayers).forEach(p => {
                 if (!p.alive) return;
-                ctx.save();
-                ctx.translate(p.x, p.y); ctx.rotate(p.angle);
+                ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.angle);
                 ctx.fillStyle = p.color; ctx.fillRect(-15, -12, 30, 24);
                 ctx.fillStyle = '#000'; ctx.fillRect(0, -3, 20, 6);
                 ctx.restore();
-                ctx.fillStyle = 'white'; ctx.font = "bold 12px Arial"; ctx.textAlign = 'center';
-                ctx.fillText(p.name, p.x, p.y - 25);
+                ctx.fillStyle = "#334155"; ctx.fillRect(p.x - 20, p.y - 35, 40, 6);
+                ctx.fillStyle = p.id === socket.id ? "#10b981" : "#ef4444";
+                ctx.fillRect(p.x - 20, p.y - 35, (p.hp/100)*40, 6);
+                ctx.fillStyle = 'white'; ctx.font = "bold 12px Arial"; ctx.textAlign = 'center'; ctx.fillText(p.name, p.x, p.y - 42);
             });
-            ctx.fillStyle = '#fbbf24';
-            bullets.forEach(b => { ctx.beginPath(); ctx.arc(b.x, b.y, 4, 0, Math.PI*2); ctx.fill(); });
+            ctx.fillStyle = '#fbbf24'; bullets.forEach(b => { ctx.beginPath(); ctx.arc(b.x, b.y, 4, 0, Math.PI*2); ctx.fill(); });
         }
 
-        function gameLoop() {
-            if(!gameActive) return;
-            update(); draw(); requestAnimationFrame(gameLoop);
-        }
+        function gameLoop() { if(gameActive) { update(); draw(); requestAnimationFrame(gameLoop); } }
     </script>
 </body>
 </html>
