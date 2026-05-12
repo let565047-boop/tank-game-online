@@ -9,42 +9,81 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/nipplejs/0.10.1/nipplejs.min.js"></script>
     <style>
         body { margin: 0; background: #020617; touch-action: none; font-family: system-ui, sans-serif; color: white; overflow: hidden; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
-        #game-container { position: relative; display: flex; flex-direction: row; align-items: center; justify-content: space-between; width: 100vw; height: 100vh; padding: 0 5vmin; box-sizing: border-box; }
-        #gameCanvas { background: #0f172a; border: 2px solid #1e293b; border-radius: 12px; height: 85vmin; width: 85vmin; order: 2; }
-        #joystick-zone { width: 120px; height: 120px; order: 1; position: relative; background: rgba(255,255,255,0.05); border-radius: 50%; }
-        .controls-right { order: 3; width: 120px; display: flex; justify-content: center; }
-        .shoot-btn { width: 70px; height: 70px; background: #ef4444; border-radius: 50%; border: none; border-bottom: 6px solid #991b1b; font-size: 30px; display: flex; align-items: center; justify-content: center; }
+        
+        /* Giao diện sảnh chuẩn giữa màn hình */
+        #lobby-container { 
+            display: flex; flex-direction: column; align-items: center; justify-content: center; 
+            width: 100vw; height: 100vh; position: absolute; z-index: 50; 
+        }
+
+        /* Giao diện trong trận dàn hàng ngang */
+        #game-container { 
+            position: relative; display: none; flex-direction: row; 
+            align-items: center; justify-content: space-between; 
+            width: 100vw; height: 100vh; padding: 0 5vw; box-sizing: border-box; 
+        }
+
+        #gameCanvas { 
+            background: #0f172a; border: 2px solid #1e293b; border-radius: 12px; 
+            height: 85vmin; width: 85vmin; order: 2; 
+        }
+
+        /* Vùng chứa Joystick bên trái */
+        #joystick-zone { 
+            width: 150px; height: 150px; order: 1; position: relative; 
+            background: rgba(255,255,255,0.03); border-radius: 50%; 
+        }
+
+        /* Vùng chứa nút bắn bên phải */
+        .controls-right { 
+            order: 3; width: 150px; display: flex; justify-content: center; 
+        }
+
+        .shoot-btn { 
+            width: 80px; height: 80px; background: #ef4444; border-radius: 50%; 
+            border: none; border-bottom: 6px solid #991b1b; font-size: 35px; 
+            display: flex; align-items: center; justify-content: center; 
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+        }
         .shoot-btn:active { border-bottom: 0; transform: translateY(6px); }
+
         #msg-box { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.6); padding: 5px 15px; border-radius: 20px; opacity: 0; z-index: 100; font-size: 12px; }
-        @media screen and (orientation: portrait) { #game-container { flex-direction: column !important; justify-content: center; gap: 20px; } #gameCanvas { width: 80vw; height: 80vw; } }
+        
+        @media screen and (orientation: portrait) { 
+            #game-container { flex-direction: column !important; justify-content: center; gap: 20px; } 
+            #gameCanvas { width: 80vw; height: 80vw; } 
+        }
     </style>
 </head>
 <body>
     <div id="msg-box" class="font-bold text-amber-400">Thông báo!</div>
 
-    <div id="lobby" class="bg-slate-900/95 p-8 rounded-[2rem] shadow-2xl w-full max-w-sm border border-slate-800 text-center">
-        <h1 class="text-4xl font-black mb-6 text-amber-500 italic uppercase">Tank.io</h1>
-        <div class="space-y-4">
-            <input id="player-name" type="text" placeholder="Tên của sen" class="w-full p-4 bg-slate-950 rounded-xl border border-slate-800 outline-none text-white">
-            <input id="room-id" type="text" placeholder="Mã phòng" class="w-full p-4 bg-slate-950 rounded-xl border border-slate-800 outline-none text-amber-500">
-            <button onclick="joinRoomAction()" class="w-full bg-amber-600 p-4 rounded-xl font-bold uppercase">Vào Phòng</button>
+    <div id="lobby-container">
+        <div id="lobby" class="bg-slate-900/95 p-8 rounded-[2rem] shadow-2xl w-full max-w-sm border border-slate-800 text-center">
+            <h1 class="text-5xl font-black mb-8 text-amber-500 italic uppercase">Tank.io</h1>
+            <div class="space-y-4">
+                <input id="player-name" type="text" placeholder="Tên của sen" class="w-full p-4 bg-slate-950 rounded-xl border border-slate-800 outline-none text-white font-bold">
+                <input id="room-id" type="text" placeholder="Mã phòng" class="w-full p-4 bg-slate-950 rounded-xl border border-slate-800 outline-none text-amber-500 font-bold">
+                <button onclick="joinRoomAction()" class="w-full bg-amber-600 p-4 rounded-xl font-bold uppercase shadow-lg">Vào Phòng</button>
+            </div>
+        </div>
+
+        <div id="waiting-room" class="hidden bg-slate-900/95 p-8 rounded-[2rem] shadow-2xl w-full max-w-sm border border-slate-800 text-center">
+            <h2 class="text-xl font-bold mb-4 italic text-slate-300">PHÒNG CHỜ</h2>
+            <div id="player-list" class="space-y-2 mb-6 text-left"></div>
+            <div id="host-controls" class="hidden border-t border-slate-800 pt-4">
+                <p class="text-xs text-slate-400 mb-2 uppercase font-bold text-left ml-2">Chọn Bản Đồ:</p>
+                <select id="map-type" class="w-full p-4 bg-slate-950 rounded-xl border border-slate-800 text-amber-500 font-bold mb-4 outline-none">
+                    <option value="classic">Mê Cung</option>
+                    <option value="arena">Đấu Trường</option>
+                    <option value="fortress">Pháo Đài</option>
+                </select>
+                <button onclick="triggerStartGame()" class="w-full bg-emerald-600 p-4 rounded-xl font-black uppercase text-lg shadow-lg">KHAI CHIẾN!</button>
+            </div>
         </div>
     </div>
 
-    <div id="waiting-room" class="hidden bg-slate-900/95 p-8 rounded-[2rem] shadow-2xl w-full max-w-sm border border-slate-800 text-center">
-        <h2 class="text-xl font-bold mb-4 italic">PHÒNG CHỜ</h2>
-        <div id="player-list" class="space-y-2 mb-6 text-left"></div>
-        <div id="host-controls" class="hidden border-t border-slate-800 pt-4">
-            <select id="map-type" class="w-full p-4 bg-slate-950 rounded-xl border border-slate-800 text-amber-500 font-bold mb-4 outline-none">
-                <option value="classic">Mê Cung</option>
-                <option value="arena">Đấu Trường</option>
-                <option value="fortress">Pháo Đài</option>
-            </select>
-            <button onclick="triggerStartGame()" class="w-full bg-emerald-600 p-4 rounded-xl font-black uppercase text-lg">KHAI CHIẾN!</button>
-        </div>
-    </div>
-
-    <div id="game-container" class="hidden">
+    <div id="game-container">
         <div id="joystick-zone"></div>
         <canvas id="gameCanvas" width="600" height="600"></canvas>
         <div class="controls-right">
@@ -63,27 +102,41 @@
         socket.on('game-started', (data) => {
             maze = data.map === "RANDOM" ? generateMaze(currentRoom) : data.map;
             if (data.players) remotePlayers = data.players;
-            document.getElementById('waiting-room').classList.add('hidden');
-            document.getElementById('game-container').classList.remove('hidden');
-            document.getElementById('game-container').classList.add('flex');
+            
+            // Chuyển cảnh: Ẩn sảnh, Hiện game
+            document.getElementById('lobby-container').style.display = 'none';
+            document.getElementById('game-container').style.display = 'flex';
+            
             gameActive = true;
             initJoystick();
             gameLoop();
         });
 
+        // HÀM KHỞI TẠO JOYSTICK
         function initJoystick() {
-            const options = { zone: document.getElementById('joystick-zone'), mode: 'static', position: {left: '50%', top: '50%'}, color: 'white', size: 80 };
+            const options = { 
+                zone: document.getElementById('joystick-zone'), 
+                mode: 'static', 
+                position: {left: '50%', top: '50%'}, 
+                color: 'white', 
+                size: 100 
+            };
             const manager = nipplejs.create(options);
+            
             manager.on('move', (evt, data) => {
                 if (data.direction) {
                     const angle = data.angle.degree;
+                    // Chuyển góc xoay thành các phím di chuyển
                     keys['KeyW'] = angle > 45 && angle < 135;
                     keys['KeyS'] = angle > 225 && angle < 315;
                     keys['KeyA'] = angle > 135 && angle < 225;
                     keys['KeyD'] = angle < 45 || angle > 315;
                 }
             });
-            manager.on('end', () => { keys['KeyW'] = keys['KeyS'] = keys['KeyA'] = keys['KeyD'] = false; });
+            
+            manager.on('end', () => { 
+                keys['KeyW'] = keys['KeyS'] = keys['KeyA'] = keys['KeyD'] = false; 
+            });
         }
 
         window.joinRoomAction = () => {
@@ -118,6 +171,7 @@
         }
 
         function triggerStartGame() { socket.emit('start-game', { roomId: currentRoom, mapType: document.getElementById('map-type').value }); }
+        
         function shoot() {
             const me = remotePlayers[socket.id];
             if (!gameActive || !me?.alive) return;
