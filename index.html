@@ -3,252 +3,531 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Tank.io - Full Skin & Joystick</title>
+
+    <title>Tank.io</title>
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="/socket.io/socket.io.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/nipplejs/0.10.1/nipplejs.min.js"></script>
+
     <style>
-        body { margin: 0; background: #020617; touch-action: none; font-family: system-ui, sans-serif; color: white; overflow: hidden; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
-        
-        #lobby-container { 
-            display: flex; flex-direction: column; align-items: center; justify-content: center; 
-            width: 100vw; height: 100vh; position: absolute; z-index: 50; 
+        body{
+            margin:0;
+            background:#020617;
+            overflow:hidden;
+            font-family:system-ui;
+            touch-action:none;
+            color:white;
         }
 
-        #game-container { 
-            position: relative; display: none; flex-direction: row; 
-            align-items: center; justify-content: space-between; 
-            width: 100vw; height: 100vh; padding: 0 5vw; box-sizing: border-box; 
+        #lobby-container{
+            width:100vw;
+            height:100vh;
+            display:flex;
+            justify-content:center;
+            align-items:center;
         }
 
-        #gameCanvas { 
-            background: #0f172a; border: 2px solid #1e293b; border-radius: 12px; 
-            height: 85vmin; width: 85vmin; order: 2; 
+        #game-container{
+            display:none;
+            width:100vw;
+            height:100vh;
+            justify-content:center;
+            align-items:center;
+            gap:20px;
         }
 
-        .color-btn { width: 35px; height: 35px; border-radius: 50%; cursor: pointer; border: 3px solid transparent; transition: 0.2s; }
-        .color-btn.active { border-color: white; transform: scale(1.2); box-shadow: 0 0 15px white; }
+        #gameCanvas{
+            background:#0f172a;
+            border:2px solid #1e293b;
+            border-radius:12px;
+        }
 
-        #joystick-zone { width: 150px; height: 150px; order: 1; position: relative; background: rgba(255,255,255,0.03); border-radius: 50%; }
-        .controls-right { order: 3; width: 150px; display: flex; justify-content: center; }
-        .shoot-btn { width: 80px; height: 80px; background: #ef4444; border-radius: 50%; border: none; border-bottom: 6px solid #991b1b; font-size: 35px; display: flex; align-items: center; justify-content: center; }
-        .shoot-btn:active { border-bottom: 0; transform: translateY(6px); }
+        #joystick-zone{
+            width:150px;
+            height:150px;
+            background:rgba(255,255,255,0.05);
+            border-radius:50%;
+        }
 
-        @media screen and (orientation: portrait) { 
-            #game-container { flex-direction: column !important; justify-content: center; gap: 20px; } 
-            #gameCanvas { width: 80vw; height: 80vw; } 
+        .shoot-btn{
+            width:90px;
+            height:90px;
+            border:none;
+            border-radius:50%;
+            background:#ef4444;
+            color:white;
+            font-size:35px;
+        }
+
+        .color-btn{
+            width:35px;
+            height:35px;
+            border-radius:50%;
+            cursor:pointer;
+            border:3px solid transparent;
+        }
+
+        .color-btn.active{
+            border-color:white;
+            transform:scale(1.15);
+        }
+
+        @media (orientation:portrait){
+            #game-container{
+                flex-direction:column;
+            }
+
+            #gameCanvas{
+                width:85vw;
+                height:85vw;
+            }
         }
     </style>
 </head>
 <body>
 
-    <div id="lobby-container">
-        <div id="lobby" class="bg-slate-900/95 p-8 rounded-[2rem] shadow-2xl w-full max-w-sm border border-slate-800 text-center">
-            <h1 class="text-4xl font-black mb-6 text-amber-500 italic uppercase">Tank.io</h1>
-            <div class="space-y-4">
-                <input id="player-name" type="text" placeholder="Tên của sen" class="w-full p-4 bg-slate-950 rounded-xl border border-slate-800 outline-none text-white font-bold">
-                <p class="text-xs text-slate-400 uppercase font-bold text-left ml-2">Chọn Skin:</p>
-                <div class="flex justify-center gap-3 mb-2">
-                    <div onclick="selectColor('#ef4444', this)" class="color-btn bg-red-500 active"></div>
-                    <div onclick="selectColor('#3b82f6', this)" class="color-btn bg-blue-500"></div>
-                    <div onclick="selectColor('#10b981', this)" class="color-btn bg-emerald-500"></div>
-                    <div onclick="selectColor('#f59e0b', this)" class="color-btn bg-amber-500"></div>
-                    <div onclick="selectColor('#a855f7', this)" class="color-btn bg-purple-500"></div>
-                </div>
-                <input id="room-id" type="text" placeholder="Mã phòng" class="w-full p-4 bg-slate-950 rounded-xl border border-slate-800 outline-none text-amber-500 font-bold">
-                <button onclick="joinRoomAction()" class="w-full bg-amber-600 p-4 rounded-xl font-bold uppercase shadow-lg">Vào Phòng</button>
+<div id="lobby-container">
+
+    <div class="bg-slate-900 p-8 rounded-3xl w-full max-w-sm">
+
+        <h1 class="text-4xl font-black text-center mb-6 text-amber-500">
+            Tank.io
+        </h1>
+
+        <div class="space-y-4">
+
+            <input
+                id="player-name"
+                placeholder="Tên người chơi"
+                class="w-full p-4 rounded-xl bg-slate-950 border border-slate-800 outline-none"
+            >
+
+            <div class="flex justify-center gap-3">
+
+                <div onclick="selectColor('#ef4444',this)" class="color-btn bg-red-500 active"></div>
+
+                <div onclick="selectColor('#3b82f6',this)" class="color-btn bg-blue-500"></div>
+
+                <div onclick="selectColor('#10b981',this)" class="color-btn bg-emerald-500"></div>
+
+                <div onclick="selectColor('#f59e0b',this)" class="color-btn bg-amber-500"></div>
+
+                <div onclick="selectColor('#a855f7',this)" class="color-btn bg-purple-500"></div>
+
             </div>
+
+            <input
+                id="room-id"
+                placeholder="Mã phòng"
+                class="w-full p-4 rounded-xl bg-slate-950 border border-slate-800 outline-none"
+            >
+
+            <select
+                id="map-type"
+                class="w-full p-4 rounded-xl bg-slate-950 border border-slate-800"
+            >
+                <option value="classic">Classic</option>
+                <option value="arena">Arena</option>
+                <option value="cross">Cross</option>
+                <option value="zigzag">Zigzag</option>
+                <option value="fortress">Fortress</option>
+            </select>
+
+            <button
+                onclick="joinRoomAction()"
+                class="w-full p-4 rounded-xl bg-amber-600 font-bold"
+            >
+                VÀO GAME
+            </button>
+
         </div>
 
-        <div id="waiting-room" class="hidden bg-slate-900/95 p-8 rounded-[2rem] shadow-2xl w-full max-w-sm border border-slate-800 text-center">
-            <h2 class="text-xl font-bold mb-4 italic text-slate-300">PHÒNG CHỜ</h2>
-            <div id="player-list" class="space-y-2 mb-6 text-left"></div>
-            <div id="host-controls" class="hidden border-t border-slate-800 pt-4">
-               <select id="map-type" class="w-full p-4 bg-slate-950 rounded-xl border border-slate-800 text-amber-500 font-bold mb-4 outline-none">
-    <option value="classic">Classic</option>
-    <option value="arena">Arena</option>
-    <option value="cross">Cross</option>
-    <option value="zigzag">Zigzag</option>
-    <option value="fortress">Fortress</option>
-</select>
-                <button onclick="triggerStartGame()" class="w-full bg-emerald-600 p-4 rounded-xl font-black uppercase text-lg">KHAI CHIẾN!</button>
-            </div>
-        </div>
     </div>
 
-    <div id="game-container">
-        <div id="joystick-zone"></div>
-        <canvas id="gameCanvas" width="600" height="600"></canvas>
-        <div class="controls-right">
-            <button onclick="shoot()" class="shoot-btn">💣</button>
-        </div>
-    </div>
+</div>
 
-    <script>
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        function playSound(type) {
-            try {
-                const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
-                osc.connect(gain); gain.connect(audioCtx.destination);
-                if (type === 'shoot') { osc.type = 'square'; osc.frequency.setValueAtTime(150, audioCtx.currentTime); gain.gain.setValueAtTime(0.1, audioCtx.currentTime); } 
-                else if (type === 'hit') { osc.type = 'sawtooth'; osc.frequency.setValueAtTime(400, audioCtx.currentTime); gain.gain.setValueAtTime(0.1, audioCtx.currentTime); }
-                osc.start(); osc.stop(audioCtx.currentTime + 0.1);
-            } catch(e) {}
-        }
+<div id="game-container">
 
-        const socket = io();
-        let selectedColor = '#ef4444', currentRoom, remotePlayers = {}, bullets = [], items = [], maze = [], gameActive = false;
-        const canvas = document.getElementById('gameCanvas'), ctx = canvas.getContext('2d');
-        const keys = {};
+    <div id="joystick-zone"></div>
 
-        function selectColor(c, el) { 
-            selectedColor = c; 
-            document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active')); 
-            el.classList.add('active'); 
-        }
+    <canvas id="gameCanvas" width="600" height="600"></canvas>
 
-        function joinRoomAction() {
-            const rId = document.getElementById('room-id').value.trim(), pName = document.getElementById('player-name').value.trim() || "Sen";
-            if(!rId) return; currentRoom = rId;
-            socket.emit('join-room', { roomId: rId, playerName: pName, color: selectedColor });
-            document.getElementById('lobby').classList.add('hidden');
-            document.getElementById('waiting-room').classList.remove('hidden');
-        }
+    <button onclick="shoot()" class="shoot-btn">
+        💣
+    </button>
 
-        socket.on('update-players', p => {
-            remotePlayers = p;
-            document.getElementById('player-list').innerHTML = Object.values(p).map(player => `
-                <div class="p-3 bg-slate-800 rounded-xl border-l-4" style="border-left-color: ${player.color}">
-                    <span class="font-bold">${player.name} ${player.id===socket.id?'(BẠN)':''}</span>
-                </div>
-            `).join('');
-            if(p[socket.id]?.isHost) document.getElementById('host-controls').classList.remove('hidden');
-        });
+</div>
 
-        socket.on('game-started', (data) => {
-            maze = data.maze || [];
-            remotePlayers = data.players || remotePlayers;
-            document.getElementById('lobby-container').style.display = 'none';
-            document.getElementById('game-container').style.display = 'flex';
-            gameActive = true;
-            initJoystick();
-            gameLoop();
-        });
+<script>
 
-        function initJoystick() {
-            const manager = nipplejs.create({ zone: document.getElementById('joystick-zone'), mode: 'static', position: {left: '50%', top: '50%'}, color: 'white', size: 100 });
-            manager.on('move', (evt, data) => {
-                const angle = data.angle.degree;
-                keys['KeyW'] = angle > 45 && angle < 135;
-                keys['KeyS'] = angle > 225 && angle < 315;
-                keys['KeyA'] = angle > 135 && angle < 225;
-                keys['KeyD'] = angle < 45 || angle > 315;
-            });
-            manager.on('end', () => { keys['KeyW'] = keys['KeyS'] = keys['KeyA'] = keys['KeyD'] = false; });
-        }
+const socket = io();
 
-        function triggerStartGame() { socket.emit('start-game', { roomId: currentRoom, mapType: document.getElementById('map-type').value }); }
-        
-        function shoot() {
-            const me = remotePlayers[socket.id];
-            if (!gameActive || !me?.alive) return;
-            playSound('shoot');
-            socket.emit('shoot', { roomId: currentRoom });
-        }
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
 
-        socket.on('player-moved', d => { if(remotePlayers[d.id]) Object.assign(remotePlayers[d.id], d); });
-        socket.on('bullets-update', b => { bullets = b; });
-       socket.on('spawn-items', i => { 
-    items = i; 
-    socket.on('new-bullet', b => {
+let currentRoom = "";
+let selectedColor = "#ef4444";
+
+let remotePlayers = {};
+let bullets = [];
+let items = [];
+let maze = [];
+
+let gameActive = false;
+
+const keys = {};
+
+function selectColor(color, el){
+
+    selectedColor = color;
+
+    document.querySelectorAll(".color-btn")
+        .forEach(b => b.classList.remove("active"));
+
+    el.classList.add("active");
+}
+
+function joinRoomAction(){
+
+    const roomId =
+        document.getElementById("room-id").value.trim();
+
+    const playerName =
+        document.getElementById("player-name").value.trim() || "Player";
+
+    if(!roomId) return;
+
+    currentRoom = roomId;
+
+    socket.emit("join-room",{
+        roomId,
+        playerName,
+        color:selectedColor
+    });
+
+    socket.emit("start-game",{
+        roomId,
+        mapType:document.getElementById("map-type").value
+    });
+}
+
+socket.on("update-players",(players)=>{
+    remotePlayers = players;
+});
+
+socket.on("game-started",(data)=>{
+
+    maze = data.maze || [];
+    remotePlayers = data.players || {};
+
+    document.getElementById("lobby-container").style.display = "none";
+
+    document.getElementById("game-container").style.display = "flex";
+
+    gameActive = true;
+
+    initJoystick();
+
+    gameLoop();
+});
+
+socket.on("player-moved",(d)=>{
+
+    if(remotePlayers[d.id]){
+
+        Object.assign(remotePlayers[d.id],d);
+
+    }
+});
+
+socket.on("spawn-items",(i)=>{
+    items = i;
+});
+
+socket.on("new-bullet",(b)=>{
     bullets.push(b);
 });
-});
 
-       function update() {
+function initJoystick(){
+
+    const manager = nipplejs.create({
+
+        zone:document.getElementById("joystick-zone"),
+
+        mode:"static",
+
+        position:{
+            left:"50%",
+            top:"50%"
+        },
+
+        color:"white",
+
+        size:100
+    });
+
+    manager.on("move",(evt,data)=>{
+
+        const angle = data.angle.degree;
+
+        keys["KeyW"] = angle > 45 && angle < 135;
+        keys["KeyS"] = angle > 225 && angle < 315;
+        keys["KeyA"] = angle > 135 && angle < 225;
+        keys["KeyD"] = angle < 45 || angle > 315;
+    });
+
+    manager.on("end",()=>{
+
+        keys["KeyW"] = false;
+        keys["KeyS"] = false;
+        keys["KeyA"] = false;
+        keys["KeyD"] = false;
+    });
+}
+
+function shoot(){
+
     const me = remotePlayers[socket.id];
-    if (!gameActive || !me?.alive) return;
+
+    if(!me || !me.alive) return;
+
+    socket.emit("shoot",{
+        roomId:currentRoom
+    });
+}
+
+function update(){
+
+    const me = remotePlayers[socket.id];
+
+    if(!me || !me.alive) return;
 
     let dx = 0;
     let dy = 0;
 
-    if (keys['KeyW']) dy -= me.speed;
-    if (keys['KeyS']) dy += me.speed;
-    if (keys['KeyA']) dx -= me.speed;
-    if (keys['KeyD']) dx += me.speed;
+    if(keys["KeyW"]) dy -= me.speed;
+    if(keys["KeyS"]) dy += me.speed;
+    if(keys["KeyA"]) dx -= me.speed;
+    if(keys["KeyD"]) dx += me.speed;
 
-    me.x += dx;
-    me.y += dy;
-me.x += dx;
-me.y += dy;
+    if(dx !== 0 || dy !== 0){
 
-// Giới hạn map
-me.x = Math.max(20, Math.min(canvas.width - 20, me.x));
-me.y = Math.max(20, Math.min(canvas.height - 20, me.y));
-    if (dx !== 0 || dy !== 0) {
-        me.angle = Math.atan2(dy, dx);
+        me.angle = Math.atan2(dy,dx);
     }
-// Update bullets
-bullets.forEach(b => {
-    b.x += Math.cos(b.angle) * 8;
-    b.y += Math.sin(b.angle) * 8;
-});
 
-// Xóa đạn ra khỏi map
-bullets = bullets.filter(b =>
-    b.x > 0 &&
-    b.x < canvas.width &&
-    b.y > 0 &&
-    b.y < canvas.height
-);
-    socket.emit('move', {
-        roomId: currentRoom,
-        x: me.x,
-        y: me.y,
-        angle: me.angle
+    let newX = me.x + dx;
+    let newY = me.y + dy;
+
+    const gridX = Math.floor(newX / 40);
+    const gridY = Math.floor(newY / 40);
+
+    if(
+        maze[gridY] &&
+        maze[gridY][gridX] === 0
+    ){
+        me.x = newX;
+        me.y = newY;
+    }
+
+    me.x = Math.max(20,Math.min(canvas.width - 20,me.x));
+    me.y = Math.max(20,Math.min(canvas.height - 20,me.y));
+
+    bullets.forEach((b,index)=>{
+
+        b.x += Math.cos(b.angle) * 8;
+        b.y += Math.sin(b.angle) * 8;
+
+        const gx = Math.floor(b.x / 40);
+        const gy = Math.floor(b.y / 40);
+
+        if(
+            maze[gy] &&
+            maze[gy][gx] === 1
+        ){
+            bullets.splice(index,1);
+            return;
+        }
+
+        Object.values(remotePlayers).forEach(p=>{
+
+            if(!p.alive) return;
+
+            if(p.id === b.id) return;
+
+            const dist = Math.hypot(
+                p.x - b.x,
+                p.y - b.y
+            );
+
+            if(dist < 20){
+
+                p.hp -= b.damage;
+
+                if(p.hp <= 0){
+
+                    p.hp = 0;
+                    p.alive = false;
+
+                    if(p.id === socket.id){
+
+                        alert("YOU LOSE");
+                    }
+                }
+
+                bullets.splice(index,1);
+            }
+        });
+    });
+
+    bullets = bullets.filter(b=>
+
+        b.x > 0 &&
+        b.x < canvas.width &&
+        b.y > 0 &&
+        b.y < canvas.height
+    );
+
+    socket.emit("move",{
+        roomId:currentRoom,
+        x:me.x,
+        y:me.y,
+        angle:me.angle
     });
 }
 
-        function draw() {
-            ctx.fillStyle = '#fbbf24';
-bullets.forEach(b => { 
-    ctx.beginPath(); 
-    ctx.arc(b.x, b.y, 4, 0, Math.PI*2); 
-    ctx.fill(); 
-});
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            // Vẽ Map
-            ctx.fillStyle = '#1e293b';
-            for (let y = 0; y < maze.length; y++) {
-                for (let x = 0; x < maze[y].length; x++) {
-                    if (maze[y][x] === 1) ctx.fillRect(x * 40, y * 40, 40, 40);
-                }
+function draw(){
+
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+
+    ctx.fillStyle = "#1e293b";
+
+    for(let y=0;y<maze.length;y++){
+
+        for(let x=0;x<maze[y].length;x++){
+
+            if(maze[y][x] === 1){
+
+                ctx.fillRect(
+                    x * 40,
+                    y * 40,
+                    40,
+                    40
+                );
             }
-            // Vẽ Xe Tăng
-            Object.values(remotePlayers).forEach(p => {
-                if (!p.alive) return;
-                ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.angle);
-                ctx.fillStyle = p.color; ctx.fillRect(-15, -12, 30, 24);
-                ctx.fillStyle = '#000'; ctx.fillRect(0, -3, 20, 6);
-                ctx.restore();
-                // HP và Tên
-                ctx.fillStyle = "#334155"; ctx.fillRect(p.x - 20, p.y - 35, 40, 5);
-                ctx.fillStyle = p.id === socket.id ? "#10b981" : "#ef4444";
-                ctx.fillRect(p.x - 20, p.y - 35, (p.hp/100)*40, 5);
-                ctx.fillStyle = 'white'; ctx.font = "bold 10px Arial"; ctx.textAlign = 'center'; 
-                ctx.fillText(p.name, p.x, p.y - 42);
-            });
-            // Vẽ Đạn
-            ctx.fillStyle = '#fbbf24';
-            bullets.forEach(b => { ctx.beginPath(); ctx.arc(b.x, b.y, 4, 0, Math.PI*2); ctx.fill(); });
+        }
+    }
+
+    items.forEach(i=>{
+
+        if(i.type === "HEAL"){
+            ctx.fillStyle = "#22c55e";
+        }
+        else if(i.type === "SPEED"){
+            ctx.fillStyle = "#3b82f6";
+        }
+        else{
+            ctx.fillStyle = "#ef4444";
         }
 
-        function gameLoop() { 
-            if(gameActive) { 
-                update(); draw(); 
-                requestAnimationFrame(gameLoop); 
-            } 
-        }
-    </script>
+        ctx.beginPath();
+
+        ctx.arc(
+            i.x,
+            i.y,
+            10,
+            0,
+            Math.PI * 2
+        );
+
+        ctx.fill();
+    });
+
+    Object.values(remotePlayers).forEach(p=>{
+
+        if(!p.alive) return;
+
+        ctx.save();
+
+        ctx.translate(p.x,p.y);
+
+        ctx.rotate(p.angle);
+
+        ctx.fillStyle = p.color;
+
+        ctx.fillRect(-15,-12,30,24);
+
+        ctx.fillStyle = "#000";
+
+        ctx.fillRect(0,-3,20,6);
+
+        ctx.restore();
+
+        ctx.fillStyle = "#334155";
+
+        ctx.fillRect(
+            p.x - 20,
+            p.y - 35,
+            40,
+            5
+        );
+
+        ctx.fillStyle =
+            p.id === socket.id
+            ? "#10b981"
+            : "#ef4444";
+
+        ctx.fillRect(
+            p.x - 20,
+            p.y - 35,
+            (p.hp / 100) * 40,
+            5
+        );
+
+        ctx.fillStyle = "white";
+
+        ctx.font = "bold 10px Arial";
+
+        ctx.textAlign = "center";
+
+        ctx.fillText(
+            p.name,
+            p.x,
+            p.y - 42
+        );
+    });
+
+    ctx.fillStyle = "#fbbf24";
+
+    bullets.forEach(b=>{
+
+        ctx.beginPath();
+
+        ctx.arc(
+            b.x,
+            b.y,
+            4,
+            0,
+            Math.PI * 2
+        );
+
+        ctx.fill();
+    });
+}
+
+function gameLoop(){
+
+    if(gameActive){
+
+        update();
+
+        draw();
+
+        requestAnimationFrame(gameLoop);
+    }
+}
+
+</script>
+
 </body>
 </html>
