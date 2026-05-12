@@ -160,6 +160,9 @@
         socket.on('bullets-update', b => { bullets = b; });
        socket.on('spawn-items', i => { 
     items = i; 
+    socket.on('new-bullet', b => {
+    bullets.push(b);
+});
 });
 
        function update() {
@@ -176,11 +179,28 @@
 
     me.x += dx;
     me.y += dy;
+me.x += dx;
+me.y += dy;
 
+// Giới hạn map
+me.x = Math.max(20, Math.min(canvas.width - 20, me.x));
+me.y = Math.max(20, Math.min(canvas.height - 20, me.y));
     if (dx !== 0 || dy !== 0) {
         me.angle = Math.atan2(dy, dx);
     }
+// Update bullets
+bullets.forEach(b => {
+    b.x += Math.cos(b.angle) * 8;
+    b.y += Math.sin(b.angle) * 8;
+});
 
+// Xóa đạn ra khỏi map
+bullets = bullets.filter(b =>
+    b.x > 0 &&
+    b.x < canvas.width &&
+    b.y > 0 &&
+    b.y < canvas.height
+);
     socket.emit('move', {
         roomId: currentRoom,
         x: me.x,
