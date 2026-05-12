@@ -52,13 +52,18 @@
         <div id="player-list" class="space-y-3 mb-6 text-left"></div>
         <div id="host-controls" class="hidden border-t border-slate-800 pt-4">
             <p class="text-xs text-slate-400 mb-2 uppercase font-bold text-left ml-2">Chọn Bản Đồ:</p>
-            <select id="map-type" class="w-full p-4 bg-slate-950 rounded-2xl border border-slate-800 text-amber-500 font-bold mb-6 outline-none">
+            <select id="map-type" class="w-full p-4 bg-slate-950 rounded-2xl border border-slate-800 text-amber-500 font-bold mb-4 outline-none">
                 <option value="classic">Mê Cung Ngẫu Nhiên</option>
                 <option value="arena">Đấu Trường (Arena)</option>
                 <option value="cross">Ngã Tư Tử Thần</option>
                 <option value="zigzag">Đường Zic-Zac</option>
                 <option value="fortress">Pháo Đài Cổ</option>
             </select>
+            
+            <button onclick="toggleFullScreen()" class="w-full bg-indigo-600 text-white p-3 rounded-xl font-bold mb-3 shadow-md uppercase text-sm">
+                🖥️ Chế độ Toàn màn hình
+            </button>
+            
             <button onclick="triggerStartGame()" class="w-full bg-emerald-600 p-5 rounded-2xl font-black text-xl uppercase shadow-lg">KHAI CHIẾN!</button>
         </div>
     </div>
@@ -69,11 +74,11 @@
         <div class="flex w-full max-w-2xl justify-between items-center px-4 mb-4 select-none">
             <div class="grid grid-cols-3 gap-1 bg-slate-800/50 p-2 rounded-2xl">
                 <div></div>
-                <button ontouchstart="keys['KeyW']=true" ontouchend="keys['KeyW']=false" class="w-12 h-12 bg-slate-700 rounded-lg flex items-center justify-center text-xl">🔼</button>
+                <button ontouchstart="keys['KeyW']=true" ontouchend="keys['KeyW']=false" class="w-12 h-12 bg-slate-700 rounded-lg flex items-center justify-center text-xl active:bg-amber-500">🔼</button>
                 <div></div>
-                <button ontouchstart="keys['KeyA']=true" ontouchend="keys['KeyA']=false" class="w-12 h-12 bg-slate-700 rounded-lg flex items-center justify-center text-xl">◀️</button>
-                <button ontouchstart="keys['KeyS']=true" ontouchend="keys['KeyS']=false" class="w-12 h-12 bg-slate-700 rounded-lg flex items-center justify-center text-xl">🔽</button>
-                <button ontouchstart="keys['KeyD']=true" ontouchend="keys['KeyD']=false" class="w-12 h-12 bg-slate-700 rounded-lg flex items-center justify-center text-xl">▶️</button>
+                <button ontouchstart="keys['KeyA']=true" ontouchend="keys['KeyA']=false" class="w-12 h-12 bg-slate-700 rounded-lg flex items-center justify-center text-xl active:bg-amber-500">◀️</button>
+                <button ontouchstart="keys['KeyS']=true" ontouchend="keys['KeyS']=false" class="w-12 h-12 bg-slate-700 rounded-lg flex items-center justify-center text-xl active:bg-amber-500">🔽</button>
+                <button ontouchstart="keys['KeyD']=true" ontouchend="keys['KeyD']=false" class="w-12 h-12 bg-slate-700 rounded-lg flex items-center justify-center text-xl active:bg-amber-500">▶️</button>
             </div>
             <button onclick="shoot()" class="w-20 h-20 bg-red-600 rounded-full border-b-8 border-red-900 active:border-b-0 active:translate-y-1 flex items-center justify-center text-3xl shadow-2xl">💣</button>
         </div>
@@ -86,6 +91,23 @@
         const keys = {};
 
         window.addEventListener('contextmenu', e => e.preventDefault());
+
+        // Hàm xử lý Toàn màn hình
+        function toggleFullScreen() {
+            if (!document.fullscreenElement) {
+                if (document.documentElement.requestFullscreen) {
+                    document.documentElement.requestFullscreen();
+                } else if (document.documentElement.webkitRequestFullscreen) {
+                    document.documentElement.webkitRequestFullscreen();
+                }
+                
+                if (screen.orientation && screen.orientation.lock) {
+                    screen.orientation.lock("landscape").catch(e => console.log("Orientation lock ignored"));
+                }
+            } else {
+                if (document.exitFullscreen) document.exitFullscreen();
+            }
+        }
 
         function checkOrientation() {
             const hint = document.getElementById('rotate-device');
