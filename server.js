@@ -18,26 +18,35 @@ const maps = {
     fortress: [[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],[1,0,0,0,0,0,1,1,1,0,0,0,0,0,1],[1,0,1,1,0,0,0,0,0,0,0,1,1,0,1],[1,0,1,1,0,1,1,0,1,1,0,1,1,0,1],[1,0,0,0,0,1,0,0,0,1,0,0,0,0,1],[1,0,0,1,1,1,0,0,0,1,1,1,0,0,1],[1,1,0,0,0,0,0,1,0,0,0,0,0,1,1],[1,1,0,0,0,0,0,1,0,0,0,0,0,1,1],[1,0,0,1,1,1,0,0,0,1,1,1,0,0,1],[1,0,0,0,0,1,0,0,0,1,0,0,0,0,1],[1,0,1,1,0,1,1,0,1,1,0,1,1,0,1],[1,0,1,1,0,0,0,0,0,0,0,1,1,0,1],[1,0,0,0,0,0,1,1,1,0,0,0,0,0,1],[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]]
 };
 
-io.on("connection", (socket) => {
+io.on("connection", (socket) => { // Phải có dấu { ở đây
     socket.on("join-room", (data) => {
         const { roomId, playerName, color } = data;
         socket.join(roomId);
         if (!gameRooms[roomId]) gameRooms[roomId] = { players: {}, items: [] };
 
         const pCount = Object.keys(gameRooms[roomId].players).length;
-        // Chia 4 góc: (60,60), (540,540), (540,60), (60,540)
         const spawns = [{x:60,y:60},{x:540,y:540},{x:540,y:60},{x:60,y:540}];
         const pos = spawns[pCount] || {x:300,y:300};
 
         gameRooms[roomId].players[socket.id] = {
-            id: socket.id, name: playerName, color: color || '#ef4444',
-            x: pos.x, y: pos.y, angle: 0, isHost: pCount === 0,
-            alive: true, hp: 100, speed: 3, damage: 35
+            id: socket.id, 
+            name: playerName, 
+            color: color || '#ef4444',
+            x: pos.x, 
+            y: pos.y, 
+            angle: 0, 
+            isHost: pCount === 0,
+            alive: true, 
+            hp: 100, 
+            speed: 3, 
+            damage: 35
         };
         io.to(roomId).emit("update-players", gameRooms[roomId].players);
     });
-
-    socket.on("start-game", (data) => {
+    
+    // Đừng quên đóng ngoặc của io.on ở cuối file nữa nha!
+});
+ socket.on("start-game", (data) => {
         const { roomId, mapType } = data;
         const room = gameRooms[roomId];
         if (room) {
@@ -45,7 +54,7 @@ io.on("connection", (socket) => {
             room.items = [];
             const types = ['SPEED', 'DAMAGE', 'HEAL'];
             
-            // Rải vật phẩm không kẹt tường
+            // Rải 6 món đồ ngẫu nhiên
             for(let i=0; i<6; i++) {
                 let rx, ry, found = false, attempts = 0;
                 while(!found && attempts < 50) {
@@ -55,13 +64,20 @@ io.on("connection", (socket) => {
                     else if (finalMap[ry][rx] === 0) found = true;
                     attempts++;
                 }
-                if (found) room.items.push({ id: Math.random(), x: rx*40+20, y: ry*40+20, type: types[Math.floor(Math.random()*3)] });
+                if (found) {
+                    room.items.push({ 
+                        id: Math.random(), 
+                        x: rx * 40 + 20, 
+                        y: ry * 40 + 20, 
+                        type: types[Math.floor(Math.random() * 3)] 
+                    });
+                }
             }
+            // Gửi dữ liệu về cho sen
             io.to(roomId).emit("game-started", { map: finalMap, players: room.players });
-            io.to(roomId).emit("spawn-items", room.items);
+            io.to(roomId).emit("spawn-items", room.items); // Dòng này quan trọng nè!
         }
     });
-
     socket.on("move", (d) => {
         if(gameRooms[d.roomId]?.players[socket.id]) {
             Object.assign(gameRooms[d.roomId].players[socket.id], { x: d.x, y: d.y, angle: d.angle });
@@ -80,24 +96,22 @@ io.on("connection", (socket) => {
         }
     });
 
-    socket.on("item-collected", (d) => {
+socket.on("item-collected", (d) => {
         const room = gameRooms[d.roomId];
         if (room) {
-            if (d.type === 'HEAL' && room.players[socket.id]) room.players[socket.id].hp = Math.min(100, room.players[socket.id].hp + 40);
+            // Nếu là túi máu (HEAL), server cập nhật máu gốc của sen luôn cho chắc
+            if (d.type === 'HEAL' && room.players[socket.id]) {
+                room.players[socket.id].hp = Math.min(100, room.players[socket.id].hp + 40);
+            }
+            
+            // Xóa món đồ đó khỏi danh sách của phòng
             room.items = room.items.filter(i => i.id !== d.itemId);
+            
+            // Báo cho tất cả mọi người là đồ đã bị lấy mất rồi
             io.to(d.roomId).emit("spawn-items", room.items);
+            // Cập nhật lại thanh máu cho mọi người cùng thấy
             io.to(d.roomId).emit("update-players", room.players);
         }
     });
 
-    socket.on("disconnect", () => {
-        for (let rId in gameRooms) {
-            if (gameRooms[rId].players[socket.id]) {
-                delete gameRooms[rId].players[socket.id];
-                io.to(rId).emit("update-players", gameRooms[rId].players);
-            }
-        }
-    });
-});
-
-server.listen(process.env.PORT || 3000, () => console.log("Server Online!"));
+server.listen(process.env.PORT || 3000, () => console.log("Server Online!"))

@@ -71,8 +71,9 @@
             <div id="host-controls" class="hidden border-t border-slate-800 pt-4">
                 <select id="map-type" class="w-full p-4 bg-slate-950 rounded-xl border border-slate-800 text-amber-500 font-bold mb-4 outline-none">
                     <option value="classic">Mê Cung</option>
-                    <option value="arena">Đấu Trường</option>
-                    <option value="fortress">Pháo Đài</option>
+                    <option value="arena">Đấu Trường La Mã</option>
+                    <option value="fortress">Pháo Đài Vô Địch</option>
+                    <option value="zigzag">Hẻm Núi Hiểm Trở</option>
                 </select>
                 <button onclick="triggerStartGame()" class="w-full bg-emerald-600 p-4 rounded-xl font-black uppercase text-lg">KHAI CHIẾN!</button>
             </div>
@@ -88,8 +89,41 @@
     </div>
 
     <script>
+        // Bộ tạo âm thanh "Made by Sen"
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+function playSound(type) {
+    const oscillator = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+
+    oscillator.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+
+    if (type === 'shoot') { // Tiếng bắn: Bùm!
+        oscillator.type = 'square';
+        oscillator.frequency.setValueAtTime(150, audioCtx.currentTime);
+        oscillator.frequency.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+    } 
+    else if (type === 'hit') { // Tiếng trúng đạn: Chát!
+        oscillator.type = 'sawtooth';
+        oscillator.frequency.setValueAtTime(400, audioCtx.currentTime);
+        oscillator.frequency.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+    }
+    else if (type === 'item') { // Tiếng nhặt đồ: Ting!
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(800, audioCtx.currentTime);
+        oscillator.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime + 0.1);
+        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+    }
+
+    oscillator.start();
+    oscillator.stop(audioCtx.currentTime + 0.3);
+}
         const socket = io();
-        let selectedColor = '#ef4444', currentRoom, remotePlayers = {}, bullets = [], maze = [], gameActive = false;
+       let selectedColor = '#ef4444', currentRoom, remotePlayers = {}, bullets = [], items = [], maze = [], gameActive = false;
         const canvas = document.getElementById('gameCanvas'), ctx = canvas.getContext('2d');
         const keys = {};
 
@@ -162,6 +196,7 @@
             const me = remotePlayers[socket.id];
             if (!gameActive || !me?.alive) return;
             const b = { x: me.x + Math.cos(me.angle)*25, y: me.y + Math.sin(me.angle)*25, vx: Math.cos(me.angle)*6, vy: Math.sin(me.angle)*6, owner: socket.id, roomId: currentRoom, damage: 35, traveled: 0 };
+            playSound('shoot');
             socket.emit('shoot', b); bullets.push(b);
         }
 
@@ -174,12 +209,13 @@
             return true;
         }
 
-        function update() {
+    function update() {
             const me = remotePlayers[socket.id];
             if (!gameActive || !me?.alive) return;
             let dx = 0, dy = 0;
             if (keys['KeyW']) dy = -me.speed; if (keys['KeyS']) dy = me.speed;
             if (keys['KeyA']) dx = -me.speed; if (keys['KeyD']) dx = me.speed;
+
             if (dx !== 0 || dy !== 0) {
                 const nx = me.x+dx, ny = me.y+dy, angle = Math.atan2(dy, dx);
                 if (canMoveTo(nx, me.y)) me.x = nx;
@@ -187,12 +223,27 @@
                 me.angle = angle;
                 socket.emit('move', { roomId: currentRoom, x: me.x, y: me.y, angle: me.angle });
             }
+
+            // --- KHÚC NÀY LÀ XỬ LÝ NHẶT ĐỒ NÈ SEN (MỚI THÊM) ---
+            items.forEach((item, index) => {
+                if (Math.sqrt((me.x - item.x)**2 + (me.y - item.y)**2) < 30) {
+                    playSound('item'); // Kêu Ting Ting nè!
+                    if (item.type === 'SPEED') { me.speed = 5.5; setTimeout(() => me.speed = 3, 5000); }
+                    if (item.type === 'DAMAGE') { me.damage = 60; setTimeout(() => me.damage = 35, 5000); }
+                    if (item.type === 'HEAL') { me.hp = Math.min(100, me.hp + 40); }
+                    socket.emit('item-collected', { roomId: currentRoom, itemId: item.id, type: item.type });
+                    items.splice(index, 1);
+                }
+            });
+
+            // Đây chính là "vòng lặp xử lý đạn" mà tui nói nè
             for (let i = bullets.length - 1; i >= 0; i--) {
                 const b = bullets[i]; b.x += b.vx; b.y += b.vy; b.traveled += 6;
                 if (b.traveled > 320 || !canMoveTo(b.x, b.y)) { bullets.splice(i, 1); continue; }
                 if (b.owner === socket.id) {
                     Object.values(remotePlayers).forEach(p => {
                         if (p.id !== socket.id && p.alive && Math.sqrt((b.x - p.x)**2 + (b.y - p.y)**2) < 22) {
+                            playSound('hit'); // Kêu Chát khi trúng địch!
                             socket.emit('hit', { roomId: currentRoom, targetId: p.id, damage: 35 });
                             bullets.splice(i, 1);
                         }
@@ -200,18 +251,34 @@
                 }
             }
         }
-
-        function draw() {
+      function draw() {
             ctx.clearRect(0, 0, 600, 600);
+            
+            // 1. Vẽ vật phẩm (items)
+            items.forEach(it => {
+                const colors = { SPEED: '#0ea5e9', DAMAGE: '#f43f5e', HEAL: '#10b981' };
+                ctx.fillStyle = colors[it.type]; ctx.beginPath(); ctx.arc(it.x, it.y, 12, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = "white"; ctx.font = "bold 10px Arial"; ctx.textAlign = "center";
+                ctx.fillText(it.type[0], it.x, it.y + 4);
+            });
+
             ctx.fillStyle = '#1e293b';
             for (let y = 0; y < 15; y++) for (let x = 0; x < 15; x++) if (maze[y][x] === 1) ctx.fillRect(x*40, y*40, 40, 40);
+            
             Object.values(remotePlayers).forEach(p => {
                 if (!p.alive) return;
                 ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.angle);
                 ctx.fillStyle = p.color; ctx.fillRect(-15, -12, 30, 24);
                 ctx.fillStyle = '#000'; ctx.fillRect(0, -3, 20, 6);
                 ctx.restore();
-                ctx.fillStyle = 'white'; ctx.font = "bold 10px Arial"; ctx.textAlign = 'center'; ctx.fillText(p.name, p.x, p.y - 42);
+                
+                // 2. Vẽ thanh máu (Dưới tên Sen)
+                ctx.fillStyle = "#334155"; ctx.fillRect(p.x - 20, p.y - 35, 40, 5);
+                ctx.fillStyle = p.id === socket.id ? "#10b981" : "#ef4444";
+                ctx.fillRect(p.x - 20, p.y - 35, (p.hp/100)*40, 5);
+
+                ctx.fillStyle = 'white'; ctx.font = "bold 10px Arial"; ctx.textAlign = 'center'; 
+                ctx.fillText(p.name, p.x, p.y - 42);
             });
             ctx.fillStyle = '#fbbf24'; bullets.forEach(b => { ctx.beginPath(); ctx.arc(b.x, b.y, 4, 0, Math.PI*2); ctx.fill(); });
         }
