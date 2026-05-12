@@ -7,21 +7,84 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="/socket.io/socket.io.js"></script>
     <style>
-        body { margin: 0; background: #020617; touch-action: none; font-family: system-ui, sans-serif; color: white; overflow: hidden; }
-        #gameCanvas { background: #0f172a; display: block; margin: auto; max-width: 95vw; max-height: 60vh; border: 4px solid #1e293b; border-radius: 16px; }
-        .color-btn { width: 35px; height: 35px; border-radius: 50%; cursor: pointer; border: 3px solid transparent; transition: 0.2s; }
-        .color-btn.active { border-color: white; transform: scale(1.2); box-shadow: 0 0 15px white; }
+        body { margin: 0; background: #020617; touch-action: none; font-family: system-ui, sans-serif; color: white; overflow: hidden; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+        
+        /* Container chính dàn hàng ngang */
+        #game-container { 
+            position: relative; 
+            display: flex; 
+            flex-direction: row; 
+            align-items: center; 
+            justify-content: space-between; 
+            width: 100vw; 
+            height: 100vh; 
+            padding: 0 5vw; 
+            box-sizing: border-box;
+        }
+
+        #gameCanvas { 
+            background: #0f172a; 
+            border: 4px solid #1e293b; 
+            border-radius: 16px; 
+            height: 85vh; 
+            width: auto;
+            aspect-ratio: 1/1; 
+            order: 2; 
+        }
+
+        /* Cụm nút di chuyển bên trái */
+        .controls-left { 
+            order: 1; 
+            display: grid; 
+            grid-template-columns: repeat(3, 1fr); 
+            gap: 10px; 
+            background: rgba(30, 41, 59, 0.5); 
+            padding: 20px; 
+            border-radius: 32px;
+        }
+
+        /* Cụm nút bắn bên phải */
+        .controls-right { 
+            order: 3; 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .ctrl-btn { 
+            width: 60px; height: 60px; 
+            background: #334155; 
+            border-radius: 16px; 
+            display: flex; align-items: center; justify-content: center; 
+            font-size: 24px; border: none; color: white;
+            box-shadow: 0 4px 0 #1e293b;
+        }
+        .ctrl-btn:active { background: #fbbf24; transform: translateY(4px); box-shadow: none; }
+
+        .shoot-btn { 
+            width: 100px; height: 100px; 
+            background: #ef4444; 
+            border-radius: 50%; 
+            border: none;
+            border-bottom: 8px solid #991b1b; 
+            font-size: 45px; 
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.4);
+        }
+        .shoot-btn:active { border-bottom: 0; transform: translateY(8px); }
+
         #msg-box { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.6); padding: 10px 20px; border-radius: 20px; opacity: 0; transition: 0.5s; z-index: 100; pointer-events: none; }
         
-        /* Tối ưu khi xoay ngang */
-        @media screen and (orientation: landscape) {
-            #gameCanvas { max-height: 75vh; max-width: 70vw; }
-            #game-container { flex-direction: row !important; justify-content: space-evenly; padding: 10px; }
+        .color-btn { width: 35px; height: 35px; border-radius: 50%; cursor: pointer; border: 3px solid transparent; transition: 0.2s; }
+        .color-btn.active { border-color: white; transform: scale(1.2); box-shadow: 0 0 15px white; }
+
+        @media screen and (orientation: portrait) {
+            #game-container { flex-direction: column !important; justify-content: center; gap: 20px; }
+            #gameCanvas { width: 90vw; height: auto; }
         }
-        button:active { transform: scale(0.95); }
     </style>
 </head>
-<body class="flex flex-col items-center justify-center min-h-screen p-2">
+<body>
 
     <div id="rotate-device" class="fixed inset-0 bg-slate-900 z-[200] flex flex-col items-center justify-center text-center p-5 md:hidden" style="display: none;">
         <div class="text-6xl mb-4">🔄</div>
@@ -30,11 +93,10 @@
 
     <div id="msg-box" class="font-bold text-amber-400">Thông báo!</div>
 
-    <div id="lobby" class="bg-slate-900/90 p-8 rounded-[2rem] shadow-2xl w-full max-w-sm border border-slate-800">
-        <h1 class="text-5xl font-black mb-8 text-center text-amber-500 italic uppercase">Tank.io</h1>
+    <div id="lobby" class="bg-slate-900/90 p-8 rounded-[2rem] shadow-2xl w-full max-w-sm border border-slate-800 text-center">
+        <h1 class="text-5xl font-black mb-8 text-amber-500 italic uppercase">Tank.io</h1>
         <div class="space-y-4">
             <input id="player-name" type="text" placeholder="Tên của sen" class="w-full p-4 bg-slate-950 rounded-2xl border border-slate-800 outline-none text-white font-bold">
-            <p class="text-xs text-slate-400 ml-2 uppercase font-bold">Chọn Skin:</p>
             <div class="flex justify-center gap-3 mb-2">
                 <div onclick="selectColor('#ef4444', this)" class="color-btn bg-red-500 active"></div>
                 <div onclick="selectColor('#3b82f6', this)" class="color-btn bg-blue-500"></div>
@@ -48,7 +110,7 @@
     </div>
 
     <div id="waiting-room" class="hidden bg-slate-900/90 p-8 rounded-[2rem] shadow-2xl w-full max-w-sm border border-slate-800 text-center">
-        <h2 class="text-xl font-bold mb-4 italic text-slate-300">PHÒNG CHỜ</h2>
+        <h2 class="text-xl font-bold mb-4 italic text-slate-300 uppercase">Phòng Chờ</h2>
         <div id="player-list" class="space-y-3 mb-6 text-left"></div>
         <div id="host-controls" class="hidden border-t border-slate-800 pt-4">
             <p class="text-xs text-slate-400 mb-2 uppercase font-bold text-left ml-2">Chọn Bản Đồ:</p>
@@ -59,28 +121,25 @@
                 <option value="zigzag">Đường Zic-Zac</option>
                 <option value="fortress">Pháo Đài Cổ</option>
             </select>
-            
-            <button onclick="toggleFullScreen()" class="w-full bg-indigo-600 text-white p-3 rounded-xl font-bold mb-3 shadow-md uppercase text-sm">
-                🖥️ Chế độ Toàn màn hình
-            </button>
-            
-            <button onclick="triggerStartGame()" class="w-full bg-emerald-600 p-5 rounded-2xl font-black text-xl uppercase shadow-lg">KHAI CHIẾN!</button>
+            <button onclick="toggleFullScreen()" class="w-full bg-indigo-600 text-white p-3 rounded-xl font-bold mb-3 uppercase text-sm">🖥️ Toàn màn hình</button>
+            <button onclick="triggerStartGame()" class="w-full bg-emerald-600 p-5 rounded-2xl font-black text-xl uppercase shadow-lg">Khai Chiến!</button>
         </div>
     </div>
 
-    <div id="game-container" class="hidden relative w-full flex flex-col items-center gap-4">
+    <div id="game-container" class="hidden">
+        <div class="controls-left">
+            <div></div>
+            <button class="ctrl-btn" ontouchstart="keys['KeyW']=true" ontouchend="keys['KeyW']=false">🔼</button>
+            <div></div>
+            <button class="ctrl-btn" ontouchstart="keys['KeyA']=true" ontouchend="keys['KeyA']=false">◀️</button>
+            <button class="ctrl-btn" ontouchstart="keys['KeyS']=true" ontouchend="keys['KeyS']=false">🔽</button>
+            <button class="ctrl-btn" ontouchstart="keys['KeyD']=true" ontouchend="keys['KeyD']=false">▶️</button>
+        </div>
+
         <canvas id="gameCanvas" width="600" height="600"></canvas>
-        
-        <div class="flex w-full max-w-2xl justify-between items-center px-4 mb-4 select-none">
-            <div class="grid grid-cols-3 gap-1 bg-slate-800/50 p-2 rounded-2xl">
-                <div></div>
-                <button ontouchstart="keys['KeyW']=true" ontouchend="keys['KeyW']=false" class="w-12 h-12 bg-slate-700 rounded-lg flex items-center justify-center text-xl active:bg-amber-500">🔼</button>
-                <div></div>
-                <button ontouchstart="keys['KeyA']=true" ontouchend="keys['KeyA']=false" class="w-12 h-12 bg-slate-700 rounded-lg flex items-center justify-center text-xl active:bg-amber-500">◀️</button>
-                <button ontouchstart="keys['KeyS']=true" ontouchend="keys['KeyS']=false" class="w-12 h-12 bg-slate-700 rounded-lg flex items-center justify-center text-xl active:bg-amber-500">🔽</button>
-                <button ontouchstart="keys['KeyD']=true" ontouchend="keys['KeyD']=false" class="w-12 h-12 bg-slate-700 rounded-lg flex items-center justify-center text-xl active:bg-amber-500">▶️</button>
-            </div>
-            <button onclick="shoot()" class="w-20 h-20 bg-red-600 rounded-full border-b-8 border-red-900 active:border-b-0 active:translate-y-1 flex items-center justify-center text-3xl shadow-2xl">💣</button>
+
+        <div class="controls-right">
+            <button onclick="shoot()" class="shoot-btn">💣</button>
         </div>
     </div>
 
@@ -92,7 +151,6 @@
 
         window.addEventListener('contextmenu', e => e.preventDefault());
 
-        // Hàm xử lý Toàn màn hình
         function toggleFullScreen() {
             if (!document.fullscreenElement) {
                 if (document.documentElement.requestFullscreen) {
@@ -100,9 +158,8 @@
                 } else if (document.documentElement.webkitRequestFullscreen) {
                     document.documentElement.webkitRequestFullscreen();
                 }
-                
                 if (screen.orientation && screen.orientation.lock) {
-                    screen.orientation.lock("landscape").catch(e => console.log("Orientation lock ignored"));
+                    screen.orientation.lock("landscape").catch(e => {});
                 }
             } else {
                 if (document.exitFullscreen) document.exitFullscreen();
@@ -111,14 +168,21 @@
 
         function checkOrientation() {
             const hint = document.getElementById('rotate-device');
-            if (window.innerHeight > window.innerWidth && window.innerWidth < 768) {
+            const isLandscape = window.innerWidth > window.innerHeight;
+            if (!isLandscape && window.innerWidth < 768) {
                 hint.style.display = 'flex';
             } else {
                 hint.style.display = 'none';
+                if (currentRoom && !document.fullscreenElement) {
+                    // Tự động yêu cầu fullscreen khi xoay ngang
+                    const doc = document.documentElement;
+                    if (doc.requestFullscreen) doc.requestFullscreen().catch(()=>{});
+                }
             }
         }
         window.addEventListener('resize', checkOrientation);
         window.addEventListener('load', checkOrientation);
+        window.addEventListener('click', () => { if(window.innerWidth > window.innerHeight) checkOrientation(); });
 
         function showMsg(t) { const b = document.getElementById('msg-box'); b.innerText = t; b.style.opacity = "1"; setTimeout(()=>b.style.opacity="0", 2000); }
         function selectColor(c, el) { selectedColor = c; document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active')); el.classList.add('active'); }
@@ -161,6 +225,7 @@
             if (data.players) remotePlayers = data.players;
             document.getElementById('waiting-room').classList.add('hidden');
             document.getElementById('game-container').classList.remove('hidden');
+            document.getElementById('game-container').style.display = 'flex';
             gameActive = true; gameLoop();
         });
 
