@@ -10,13 +10,11 @@
     <style>
         body { margin: 0; background: #020617; touch-action: none; font-family: system-ui, sans-serif; color: white; overflow: hidden; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
         
-        /* MÀN HÌNH SẢNH */
         #lobby-container { 
             display: flex; flex-direction: column; align-items: center; justify-content: center; 
             width: 100vw; height: 100vh; position: absolute; z-index: 50; 
         }
 
-        /* MÀN HÌNH TRONG TRẬN */
         #game-container { 
             position: relative; display: none; flex-direction: row; 
             align-items: center; justify-content: space-between; 
@@ -28,7 +26,6 @@
             height: 85vmin; width: 85vmin; order: 2; 
         }
 
-        /* Skin button */
         .color-btn { width: 35px; height: 35px; border-radius: 50%; cursor: pointer; border: 3px solid transparent; transition: 0.2s; }
         .color-btn.active { border-color: white; transform: scale(1.2); box-shadow: 0 0 15px white; }
 
@@ -50,7 +47,6 @@
             <h1 class="text-4xl font-black mb-6 text-amber-500 italic uppercase">Tank.io</h1>
             <div class="space-y-4">
                 <input id="player-name" type="text" placeholder="Tên của sen" class="w-full p-4 bg-slate-950 rounded-xl border border-slate-800 outline-none text-white font-bold">
-                
                 <p class="text-xs text-slate-400 uppercase font-bold text-left ml-2">Chọn Skin:</p>
                 <div class="flex justify-center gap-3 mb-2">
                     <div onclick="selectColor('#ef4444', this)" class="color-btn bg-red-500 active"></div>
@@ -59,7 +55,6 @@
                     <div onclick="selectColor('#f59e0b', this)" class="color-btn bg-amber-500"></div>
                     <div onclick="selectColor('#a855f7', this)" class="color-btn bg-purple-500"></div>
                 </div>
-
                 <input id="room-id" type="text" placeholder="Mã phòng" class="w-full p-4 bg-slate-950 rounded-xl border border-slate-800 outline-none text-amber-500 font-bold">
                 <button onclick="joinRoomAction()" class="w-full bg-amber-600 p-4 rounded-xl font-bold uppercase shadow-lg">Vào Phòng</button>
             </div>
@@ -71,9 +66,7 @@
             <div id="host-controls" class="hidden border-t border-slate-800 pt-4">
                 <select id="map-type" class="w-full p-4 bg-slate-950 rounded-xl border border-slate-800 text-amber-500 font-bold mb-4 outline-none">
                     <option value="classic">Mê Cung</option>
-                    <option value="arena">Đấu Trường La Mã</option>
-                    <option value="fortress">Pháo Đài Vô Địch</option>
-                    <option value="zigzag">Hẻm Núi Hiểm Trở</option>
+                    <option value="arena">Đấu Trường</option>
                 </select>
                 <button onclick="triggerStartGame()" class="w-full bg-emerald-600 p-4 rounded-xl font-black uppercase text-lg">KHAI CHIẾN!</button>
             </div>
@@ -89,41 +82,19 @@
     </div>
 
     <script>
-        // Bộ tạo âm thanh "Made by Sen"
-const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playSound(type) {
+            try {
+                const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                if (type === 'shoot') { osc.type = 'square'; osc.frequency.setValueAtTime(150, audioCtx.currentTime); gain.gain.setValueAtTime(0.1, audioCtx.currentTime); } 
+                else if (type === 'hit') { osc.type = 'sawtooth'; osc.frequency.setValueAtTime(400, audioCtx.currentTime); gain.gain.setValueAtTime(0.1, audioCtx.currentTime); }
+                osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+            } catch(e) {}
+        }
 
-function playSound(type) {
-    const oscillator = audioCtx.createOscillator();
-    const gainNode = audioCtx.createGain();
-
-    oscillator.connect(gainNode);
-    gainNode.connect(audioCtx.destination);
-
-    if (type === 'shoot') { // Tiếng bắn: Bùm!
-        oscillator.type = 'square';
-        oscillator.frequency.setValueAtTime(150, audioCtx.currentTime);
-        oscillator.frequency.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
-        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
-    } 
-    else if (type === 'hit') { // Tiếng trúng đạn: Chát!
-        oscillator.type = 'sawtooth';
-        oscillator.frequency.setValueAtTime(400, audioCtx.currentTime);
-        oscillator.frequency.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
-        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
-    }
-    else if (type === 'item') { // Tiếng nhặt đồ: Ting!
-        oscillator.type = 'sine';
-        oscillator.frequency.setValueAtTime(800, audioCtx.currentTime);
-        oscillator.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime + 0.1);
-        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
-    }
-
-    oscillator.start();
-    oscillator.stop(audioCtx.currentTime + 0.3);
-}
         const socket = io();
-       let selectedColor = '#ef4444', currentRoom, remotePlayers = {}, bullets = [], items = [], maze = [], gameActive = false;
+        let selectedColor = '#ef4444', currentRoom, remotePlayers = {}, bullets = [], items = [], maze = [], gameActive = false;
         const canvas = document.getElementById('gameCanvas'), ctx = canvas.getContext('2d');
         const keys = {};
 
@@ -133,41 +104,13 @@ function playSound(type) {
             el.classList.add('active'); 
         }
 
-        socket.on('game-started', (data) => {
-            maze = data.map === "RANDOM" ? generateMaze(currentRoom) : data.map;
-            if (data.players) remotePlayers = data.players;
-            
-            // Chuyển cảnh cực đơn giản
-            document.getElementById('lobby-container').style.display = 'none';
-            document.getElementById('game-container').style.display = 'flex';
-            
-            gameActive = true;
-            initJoystick();
-            gameLoop();
-        });
-
-        function initJoystick() {
-            const options = { zone: document.getElementById('joystick-zone'), mode: 'static', position: {left: '50%', top: '50%'}, color: 'white', size: 100 };
-            const manager = nipplejs.create(options);
-            manager.on('move', (evt, data) => {
-                if (data.direction) {
-                    const angle = data.angle.degree;
-                    keys['KeyW'] = angle > 45 && angle < 135;
-                    keys['KeyS'] = angle > 225 && angle < 315;
-                    keys['KeyA'] = angle > 135 && angle < 225;
-                    keys['KeyD'] = angle < 45 || angle > 315;
-                }
-            });
-            manager.on('end', () => { keys['KeyW'] = keys['KeyS'] = keys['KeyA'] = keys['KeyD'] = false; });
-        }
-
-        window.joinRoomAction = () => {
+        function joinRoomAction() {
             const rId = document.getElementById('room-id').value.trim(), pName = document.getElementById('player-name').value.trim() || "Sen";
             if(!rId) return; currentRoom = rId;
             socket.emit('join-room', { roomId: rId, playerName: pName, color: selectedColor });
             document.getElementById('lobby').classList.add('hidden');
             document.getElementById('waiting-room').classList.remove('hidden');
-        };
+        }
 
         socket.on('update-players', p => {
             remotePlayers = p;
@@ -179,110 +122,81 @@ function playSound(type) {
             if(p[socket.id]?.isHost) document.getElementById('host-controls').classList.remove('hidden');
         });
 
-        socket.on('player-moved', d => { if(remotePlayers[d.id]) Object.assign(remotePlayers[d.id], d); });
-        socket.on('new-bullet', b => { if(b.owner !== socket.id) bullets.push(b); });
-        socket.on('game-over', d => { alert(d.result); location.reload(); });
+        socket.on('game-started', (data) => {
+            maze = data.maze || [];
+            remotePlayers = data.players || remotePlayers;
+            document.getElementById('lobby-container').style.display = 'none';
+            document.getElementById('game-container').style.display = 'flex';
+            gameActive = true;
+            initJoystick();
+            gameLoop();
+        });
 
-        function generateMaze(seed) {
-            const m = Array(15).fill().map(() => Array(15).fill(1));
-            let sNum = 0; for(let i=0; i<seed.length; i++) sNum += seed.charCodeAt(i);
-            const rnd = () => { sNum = (sNum * 9301 + 49297) % 233280; return sNum / 233280; };
-            function walk(x, y) { m[y][x] = 0; const dirs = [[0, 2], [0, -2], [2, 0], [-2, 0]].sort(() => rnd() - 0.5); for (let [dx, dy] of dirs) { let nx = x+dx, ny = y+dy; if (nx>0 && nx<14 && ny>0 && ny<14 && m[ny][nx]===1) { m[y+dy/2][x+dx/2]=0; walk(nx, ny); } } }
-            walk(1, 1); return m;
+        function initJoystick() {
+            const manager = nipplejs.create({ zone: document.getElementById('joystick-zone'), mode: 'static', position: {left: '50%', top: '50%'}, color: 'white', size: 100 });
+            manager.on('move', (evt, data) => {
+                const angle = data.angle.degree;
+                keys['KeyW'] = angle > 45 && angle < 135;
+                keys['KeyS'] = angle > 225 && angle < 315;
+                keys['KeyA'] = angle > 135 && angle < 225;
+                keys['KeyD'] = angle < 45 || angle > 315;
+            });
+            manager.on('end', () => { keys['KeyW'] = keys['KeyS'] = keys['KeyA'] = keys['KeyD'] = false; });
         }
 
         function triggerStartGame() { socket.emit('start-game', { roomId: currentRoom, mapType: document.getElementById('map-type').value }); }
+        
         function shoot() {
             const me = remotePlayers[socket.id];
             if (!gameActive || !me?.alive) return;
-            const b = { x: me.x + Math.cos(me.angle)*25, y: me.y + Math.sin(me.angle)*25, vx: Math.cos(me.angle)*6, vy: Math.sin(me.angle)*6, owner: socket.id, roomId: currentRoom, damage: 35, traveled: 0 };
             playSound('shoot');
-            socket.emit('shoot', b); bullets.push(b);
+            socket.emit('shoot', { roomId: currentRoom });
         }
 
-        function canMoveTo(nx, ny) {
-            const p = 12; const pts = [{x:nx-p,y:ny-p}, {x:nx+p,y:ny-p}, {x:nx-p,y:ny+p}, {x:nx+p,y:ny+p}];
-            for (let pt of pts) {
-                const tx = Math.floor(pt.x / 40), ty = Math.floor(pt.y / 40);
-                if (!maze[ty] || maze[ty][tx] === 1) return false;
-            }
-            return true;
-        }
+        socket.on('player-moved', d => { if(remotePlayers[d.id]) Object.assign(remotePlayers[d.id], d); });
+        socket.on('bullets-update', b => { bullets = b; });
+        socket.on('items-update', i => { items = i; });
 
-    function update() {
+        function update() {
             const me = remotePlayers[socket.id];
             if (!gameActive || !me?.alive) return;
-            let dx = 0, dy = 0;
-            if (keys['KeyW']) dy = -me.speed; if (keys['KeyS']) dy = me.speed;
-            if (keys['KeyA']) dx = -me.speed; if (keys['KeyD']) dx = me.speed;
-
-            if (dx !== 0 || dy !== 0) {
-                const nx = me.x+dx, ny = me.y+dy, angle = Math.atan2(dy, dx);
-                if (canMoveTo(nx, me.y)) me.x = nx;
-                if (canMoveTo(me.x, ny)) me.y = ny;
-                me.angle = angle;
-                socket.emit('move', { roomId: currentRoom, x: me.x, y: me.y, angle: me.angle });
-            }
-
-            // --- KHÚC NÀY LÀ XỬ LÝ NHẶT ĐỒ NÈ SEN (MỚI THÊM) ---
-            items.forEach((item, index) => {
-                if (Math.sqrt((me.x - item.x)**2 + (me.y - item.y)**2) < 30) {
-                    playSound('item'); // Kêu Ting Ting nè!
-                    if (item.type === 'SPEED') { me.speed = 5.5; setTimeout(() => me.speed = 3, 5000); }
-                    if (item.type === 'DAMAGE') { me.damage = 60; setTimeout(() => me.damage = 35, 5000); }
-                    if (item.type === 'HEAL') { me.hp = Math.min(100, me.hp + 40); }
-                    socket.emit('item-collected', { roomId: currentRoom, itemId: item.id, type: item.type });
-                    items.splice(index, 1);
-                }
-            });
-
-            // Đây chính là "vòng lặp xử lý đạn" mà tui nói nè
-            for (let i = bullets.length - 1; i >= 0; i--) {
-                const b = bullets[i]; b.x += b.vx; b.y += b.vy; b.traveled += 6;
-                if (b.traveled > 320 || !canMoveTo(b.x, b.y)) { bullets.splice(i, 1); continue; }
-                if (b.owner === socket.id) {
-                    Object.values(remotePlayers).forEach(p => {
-                        if (p.id !== socket.id && p.alive && Math.sqrt((b.x - p.x)**2 + (b.y - p.y)**2) < 22) {
-                            playSound('hit'); // Kêu Chát khi trúng địch!
-                            socket.emit('hit', { roomId: currentRoom, targetId: p.id, damage: 35 });
-                            bullets.splice(i, 1);
-                        }
-                    });
-                }
-            }
+            // Di chuyển và xử lý logic client nếu cần...
         }
-      function draw() {
-            ctx.clearRect(0, 0, 600, 600);
-            
-            // 1. Vẽ vật phẩm (items)
-            items.forEach(it => {
-                const colors = { SPEED: '#0ea5e9', DAMAGE: '#f43f5e', HEAL: '#10b981' };
-                ctx.fillStyle = colors[it.type]; ctx.beginPath(); ctx.arc(it.x, it.y, 12, 0, Math.PI*2); ctx.fill();
-                ctx.fillStyle = "white"; ctx.font = "bold 10px Arial"; ctx.textAlign = "center";
-                ctx.fillText(it.type[0], it.x, it.y + 4);
-            });
 
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            // Vẽ Map
             ctx.fillStyle = '#1e293b';
-            for (let y = 0; y < 15; y++) for (let x = 0; x < 15; x++) if (maze[y][x] === 1) ctx.fillRect(x*40, y*40, 40, 40);
-            
+            for (let y = 0; y < maze.length; y++) {
+                for (let x = 0; x < maze[y].length; x++) {
+                    if (maze[y][x] === 1) ctx.fillRect(x * 40, y * 40, 40, 40);
+                }
+            }
+            // Vẽ Xe Tăng
             Object.values(remotePlayers).forEach(p => {
                 if (!p.alive) return;
                 ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.angle);
                 ctx.fillStyle = p.color; ctx.fillRect(-15, -12, 30, 24);
                 ctx.fillStyle = '#000'; ctx.fillRect(0, -3, 20, 6);
                 ctx.restore();
-                
-                // 2. Vẽ thanh máu (Dưới tên Sen)
+                // HP và Tên
                 ctx.fillStyle = "#334155"; ctx.fillRect(p.x - 20, p.y - 35, 40, 5);
                 ctx.fillStyle = p.id === socket.id ? "#10b981" : "#ef4444";
                 ctx.fillRect(p.x - 20, p.y - 35, (p.hp/100)*40, 5);
-
                 ctx.fillStyle = 'white'; ctx.font = "bold 10px Arial"; ctx.textAlign = 'center'; 
                 ctx.fillText(p.name, p.x, p.y - 42);
             });
-            ctx.fillStyle = '#fbbf24'; bullets.forEach(b => { ctx.beginPath(); ctx.arc(b.x, b.y, 4, 0, Math.PI*2); ctx.fill(); });
+            // Vẽ Đạn
+            ctx.fillStyle = '#fbbf24';
+            bullets.forEach(b => { ctx.beginPath(); ctx.arc(b.x, b.y, 4, 0, Math.PI*2); ctx.fill(); });
         }
-        function gameLoop() { if(gameActive) { update(); draw(); requestAnimationFrame(gameLoop); } }
+
+        function gameLoop() { 
+            if(gameActive) { 
+                update(); draw(); 
+                requestAnimationFrame(gameLoop); 
+            } 
+        }
     </script>
 </body>
 </html>
