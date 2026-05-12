@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Tank.io - Pro Mobile Edition</title>
+    <title>Tank.io - Portrait Mobile Edition</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="/socket.io/socket.io.js"></script>
     <style>
-        body { margin: 0; background: #020617; touch-action: none; font-family: system-ui, sans-serif; color: white; overflow: hidden; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+        body { margin: 0; background: #020617; touch-action: none; font-family: system-ui, sans-serif; color: white; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; min-height: 100vh; padding: 10px 0; }
         
-        /* Lobby & Waiting Room gọn gàng */
+        /* Giao diện Lobby & Waiting Room */
         #lobby, #waiting-room { 
             max-width: 320px; 
             width: 90%; 
@@ -17,103 +17,83 @@
             background: rgba(15, 23, 42, 0.95);
             border-radius: 2rem;
             border: 1px solid #1e293b;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            margin-top: 20px;
         }
 
-        /* Container chính khi vào trận */
+        /* Container chính khi vào trận - Chế độ dọc */
         #game-container { 
-            position: relative; 
-            display: flex; 
-            flex-direction: row; 
+            display: none; 
+            flex-direction: column; 
             align-items: center; 
-            justify-content: space-between; 
             width: 100vw; 
             height: 100vh; 
-            padding: 10px 30px; 
-            box-sizing: border-box;
+            gap: 15px;
         }
 
-        /* Map - To rõ và nằm giữa */
+        /* Map hình vuông, to chiếm gần hết chiều ngang điện thoại */
         #gameCanvas { 
             background: #0f172a; 
             border: 3px solid #1e293b; 
             border-radius: 12px; 
-            height: 82vh; 
-            width: auto;
+            width: 92vw; 
+            height: auto;
             aspect-ratio: 1/1; 
-            order: 2;
-            box-shadow: 0 0 30px rgba(0,0,0,0.6);
+            box-shadow: 0 0 25px rgba(0,0,0,0.5);
         }
 
-        /* Cụm điều hướng bên trái */
+        /* Cụm điều hướng bên dưới map */
+        .controls-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            width: 100%;
+        }
+
         .controls-left { 
-            order: 1; 
             display: grid; 
             grid-template-columns: repeat(3, 1fr); 
-            gap: 6px; 
-            background: rgba(30, 41, 59, 0.4); 
-            padding: 12px; 
-            border-radius: 24px;
-            backdrop-filter: blur(4px);
+            gap: 10px; 
+            background: rgba(30, 41, 59, 0.5); 
+            padding: 15px; 
+            border-radius: 20px;
         }
 
-        /* Cụm tấn công bên phải */
-        .controls-right { 
-            order: 3; 
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        /* Nút di chuyển nhỏ gọn */
+        /* Nút bấm di chuyển */
         .ctrl-btn { 
-            width: 50px; height: 50px; 
+            width: 55px; height: 55px; 
             background: #334155; 
             border-radius: 12px; 
             display: flex; align-items: center; justify-content: center; 
-            font-size: 20px; border: none; color: white;
+            font-size: 24px; border: none; color: white;
             box-shadow: 0 4px 0 #1e293b;
         }
-        .ctrl-btn:active { background: #fbbf24; transform: translateY(2px); box-shadow: none; color: #000; }
+        .ctrl-btn:active { background: #fbbf24; transform: translateY(4px); box-shadow: none; color: #000; }
 
-        /* Nút bắn uy lực */
+        /* Nút bắn dưới cùng */
         .shoot-btn { 
-            width: 80px; height: 80px; 
+            width: 85px; height: 85px; 
             background: #ef4444; 
             border-radius: 50%; 
             border: none;
-            border-bottom: 6px solid #991b1b; 
-            font-size: 36px; 
+            border-bottom: 8px solid #991b1b; 
+            font-size: 40px; 
             display: flex; align-items: center; justify-content: center;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.4);
         }
-        .shoot-btn:active { border-bottom: 0; transform: translateY(6px); background: #dc2626; }
+        .shoot-btn:active { border-bottom: 0; transform: translateY(8px); background: #dc2626; }
 
-        #msg-box { position: absolute; top: 15px; font-size: 14px; z-index: 100; }
-
-        /* Khi cầm điện thoại dọc */
-        @media screen and (orientation: portrait) {
-            #game-container { flex-direction: column !important; justify-content: center; gap: 20px; }
-            #gameCanvas { width: 88vw; height: auto; order: 1; }
-            .controls-left { order: 2; scale: 0.9; }
-            .controls-right { order: 3; scale: 0.9; }
-        }
-
+        #msg-box { font-size: 14px; margin-bottom: 5px; height: 20px; }
         .color-btn { width: 35px; height: 35px; border-radius: 50%; cursor: pointer; border: 3px solid transparent; transition: 0.2s; }
         .color-btn.active { border-color: white; transform: scale(1.2); box-shadow: 0 0 15px white; }
     </style>
 </head>
 <body>
 
-    <div id="rotate-device" class="fixed inset-0 bg-slate-900 z-[200] flex flex-col items-center justify-center text-center p-5 md:hidden" style="display: none;">
-        <div class="text-6xl mb-4">🔄</div>
-        <p class="text-xl font-bold">Sen ơi, xoay ngang điện thoại <br> để khai chiến nhé!</p>
-    </div>
+    <div id="msg-box" class="font-bold text-amber-400 text-center"></div>
 
-    <div id="msg-box" class="font-bold text-amber-400">Thông báo!</div>
-
-    <div id="lobby" class="bg-slate-900/90 p-8 rounded-[2rem] shadow-2xl border border-slate-800 text-center">
-        <h1 class="text-5xl font-black mb-8 text-amber-500 italic uppercase tracking-tighter">Tank.io</h1>
+    <div id="lobby" class="shadow-2xl text-center">
+        <h1 class="text-5xl font-black mb-6 text-amber-500 italic uppercase tracking-tighter">Tank.io</h1>
         <div class="space-y-4">
             <input id="player-name" type="text" placeholder="Tên của sen" class="w-full p-4 bg-slate-950 rounded-2xl border border-slate-800 outline-none text-white font-bold">
             <div class="flex justify-center gap-3 mb-2">
@@ -124,7 +104,7 @@
                 <div onclick="selectColor('#a855f7', this)" class="color-btn bg-purple-500"></div>
             </div>
             <input id="room-id" type="text" placeholder="Mã phòng" class="w-full p-4 bg-slate-950 rounded-2xl border border-slate-800 outline-none text-amber-500 font-bold">
-            <button onclick="joinRoomAction()" class="w-full bg-amber-600 text-white p-4 rounded-2xl font-black uppercase shadow-lg hover:bg-amber-500 transition">Vào Phòng</button>
+            <button onclick="joinRoomAction()" class="w-full bg-amber-600 text-white p-4 rounded-2xl font-black uppercase shadow-lg">Vào Phòng</button>
         </div>
     </div>
 
@@ -132,32 +112,30 @@
         <h2 class="text-xl font-bold mb-4 italic text-slate-300 uppercase tracking-widest">Phòng Chờ</h2>
         <div id="player-list" class="space-y-3 mb-6 text-left"></div>
         <div id="host-controls" class="hidden border-t border-slate-800 pt-4">
-            <p class="text-xs text-slate-400 mb-2 uppercase font-bold text-left ml-2">Bản Đồ:</p>
-            <select id="map-type" class="w-full p-4 bg-slate-950 rounded-2xl border border-slate-800 text-amber-500 font-bold mb-4 outline-none">
+            <p class="text-xs text-slate-400 mb-2 uppercase font-bold text-left ml-2">Chọn Bản Đồ:</p>
+            <select id="map-type" class="w-full p-4 bg-slate-950 rounded-2xl border border-slate-800 text-amber-500 font-bold mb-6 outline-none">
                 <option value="classic">Mê Cung Ngẫu Nhiên</option>
                 <option value="arena">Đấu Trường (Arena)</option>
                 <option value="cross">Ngã Tư Tử Thần</option>
                 <option value="zigzag">Đường Zic-Zac</option>
                 <option value="fortress">Pháo Đài Cổ</option>
             </select>
-            <button onclick="toggleFullScreen()" class="w-full bg-indigo-600 text-white p-3 rounded-xl font-bold mb-3 uppercase text-xs tracking-tighter">🖥️ Toàn màn hình</button>
-            <button onclick="triggerStartGame()" class="w-full bg-emerald-600 p-5 rounded-2xl font-black text-xl uppercase shadow-lg hover:bg-emerald-500 transition">Khai Chiến!</button>
+            <button onclick="triggerStartGame()" class="w-full bg-emerald-600 p-5 rounded-2xl font-black text-xl uppercase shadow-lg">Khai Chiến!</button>
         </div>
     </div>
 
-    <div id="game-container" class="hidden">
-        <div class="controls-left">
-            <div></div>
-            <button class="ctrl-btn" ontouchstart="keys['KeyW']=true" ontouchend="keys['KeyW']=false">🔼</button>
-            <div></div>
-            <button class="ctrl-btn" ontouchstart="keys['KeyA']=true" ontouchend="keys['KeyA']=false">◀️</button>
-            <button class="ctrl-btn" ontouchstart="keys['KeyS']=true" ontouchend="keys['KeyS']=false">🔽</button>
-            <button class="ctrl-btn" ontouchstart="keys['KeyD']=true" ontouchend="keys['KeyD']=false">▶️</button>
-        </div>
-
+    <div id="game-container">
         <canvas id="gameCanvas" width="600" height="600"></canvas>
-
-        <div class="controls-right">
+        
+        <div class="controls-area">
+            <div class="controls-left">
+                <div></div>
+                <button class="ctrl-btn" ontouchstart="keys['KeyW']=true" ontouchend="keys['KeyW']=false">🔼</button>
+                <div></div>
+                <button class="ctrl-btn" ontouchstart="keys['KeyA']=true" ontouchend="keys['KeyA']=false">◀️</button>
+                <button class="ctrl-btn" ontouchstart="keys['KeyS']=true" ontouchend="keys['KeyS']=false">🔽</button>
+                <button class="ctrl-btn" ontouchstart="keys['KeyD']=true" ontouchend="keys['KeyD']=false">▶️</button>
+            </div>
             <button onclick="shoot()" class="shoot-btn">💣</button>
         </div>
     </div>
@@ -169,33 +147,6 @@
         const keys = {};
 
         window.addEventListener('contextmenu', e => e.preventDefault());
-
-        function toggleFullScreen() {
-            if (!document.fullscreenElement) {
-                const doc = document.documentElement;
-                if (doc.requestFullscreen) doc.requestFullscreen();
-                else if (doc.webkitRequestFullscreen) doc.webkitRequestFullscreen();
-                if (screen.orientation && screen.orientation.lock) screen.orientation.lock("landscape").catch(()=>{});
-            } else {
-                if (document.exitFullscreen) document.exitFullscreen();
-            }
-        }
-
-        function checkOrientation() {
-            const hint = document.getElementById('rotate-device');
-            const isLandscape = window.innerWidth > window.innerHeight;
-            if (!isLandscape && window.innerWidth < 768) {
-                hint.style.display = 'flex';
-            } else {
-                hint.style.display = 'none';
-                if (currentRoom && !document.fullscreenElement && isLandscape) {
-                    document.documentElement.requestFullscreen().catch(()=>{});
-                }
-            }
-        }
-        window.addEventListener('resize', checkOrientation);
-        window.addEventListener('load', checkOrientation);
-        window.addEventListener('click', () => { if(window.innerWidth > window.innerHeight) checkOrientation(); });
 
         function showMsg(t) { const b = document.getElementById('msg-box'); b.innerText = t; b.style.opacity = "1"; setTimeout(()=>b.style.opacity="0", 2000); }
         function selectColor(c, el) { selectedColor = c; document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active')); el.classList.add('active'); }
@@ -225,7 +176,7 @@
         socket.on('update-players', p => {
             remotePlayers = p;
             document.getElementById('player-list').innerHTML = Object.values(p).map(player => `
-                <div class="p-3 bg-slate-800/80 rounded-xl border-l-4" style="border-left-color: ${player.color}">
+                <div class="p-3 bg-slate-800 rounded-xl border-l-4" style="border-left-color: ${player.color}">
                     <span class="font-bold text-sm">${player.name} ${player.id===socket.id?'(BẠN)':''} ${player.isHost?'👑':''}</span>
                 </div>
             `).join('');
@@ -237,7 +188,6 @@
             maze = data.map === "RANDOM" ? generateMaze(currentRoom) : data.map;
             if (data.players) remotePlayers = data.players;
             document.getElementById('waiting-room').classList.add('hidden');
-            document.getElementById('game-container').classList.remove('hidden');
             document.getElementById('game-container').style.display = 'flex';
             gameActive = true; gameLoop();
         });
