@@ -9,6 +9,7 @@ app.use(express.static(__dirname));
 
 let gameRooms = {};
 
+// Khôi phục đầy đủ 5 Map sen đã duyệt
 const maps = {
     classic: "RANDOM",
     arena: [[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],[1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[1,0,1,1,0,0,0,0,0,0,0,1,1,0,1],[1,0,1,1,0,0,0,0,0,0,0,1,1,0,1],[1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[1,0,0,0,0,1,1,1,1,1,0,0,0,0,1],[1,0,0,0,0,1,0,0,0,1,0,0,0,0,1],[1,0,0,0,0,1,0,0,0,1,0,0,0,0,1],[1,0,0,0,0,1,1,1,1,1,0,0,0,0,1],[1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[1,0,1,1,0,0,0,0,0,0,0,1,1,0,1],[1,0,1,1,0,0,0,0,0,0,0,1,1,0,1],[1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]],
@@ -18,17 +19,15 @@ const maps = {
 };
 
 io.on("connection", (socket) => {
-    console.log("Kết nối mới:", socket.id);
-
     socket.on("join-room", (data) => {
         const { roomId, playerName, color } = data;
         socket.join(roomId);
-        socket.currentRoom = roomId; // Lưu lại để dùng khi disconnect
+        socket.currentRoom = roomId;
 
         if (!gameRooms[roomId]) gameRooms[roomId] = { players: {}, items: [] };
 
         const pCount = Object.keys(gameRooms[roomId].players).length;
-        const spawns = [{x:60,y:60},{x:540,y:540},{x:540,y:60},{x:60,y:540}];
+        const spawns = [{x:80,y:80},{x:520,y:520},{x:520,y:80},{x:80,y:520}];
         const pos = spawns[pCount] || {x:300,y:300};
 
         gameRooms[roomId].players[socket.id] = {
@@ -41,7 +40,7 @@ io.on("connection", (socket) => {
             isHost: pCount === 0,
             alive: true, 
             hp: 100, 
-            speed: 3, 
+            speed: 3.2, 
             damage: 35
         };
         io.to(roomId).emit("update-players", gameRooms[roomId].players);
@@ -79,8 +78,10 @@ io.on("connection", (socket) => {
     });
 
     socket.on("move", (d) => {
-        if(gameRooms[d.roomId]?.players[socket.id]) {
-            Object.assign(gameRooms[d.roomId].players[socket.id], { x: d.x, y: d.y, angle: d.angle });
+        const room = gameRooms[d.roomId];
+        if(room && room.players[socket.id]) {
+            // Cập nhật vị trí mới từ client gửi lên (bao gồm cả Joystick xử lý)
+            Object.assign(room.players[socket.id], { x: d.x, y: d.y, angle: d.angle });
             socket.to(d.roomId).emit("player-moved", { id: socket.id, x: d.x, y: d.y, angle: d.angle });
         }
     });
@@ -113,7 +114,7 @@ io.on("connection", (socket) => {
         const room = gameRooms[d.roomId];
         if (room && room.players[socket.id]) {
             if (d.type === 'HEAL') {
-                room.players[socket.id].hp = Math.min(100, room.players[socket.id].hp + 40);
+                room.players[socket.id].hp = Math.min(100, room.players[socket.id].hp + 30);
             }
             room.items = room.items.filter(i => i.id !== d.itemId);
             io.to(d.roomId).emit("spawn-items", room.items);
@@ -135,4 +136,4 @@ io.on("connection", (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log("Server Online tại cổng: " + PORT));
+server.listen(PORT, () => console.log("Server Online - 5 Maps Ready!"));
