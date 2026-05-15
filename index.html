@@ -327,42 +327,60 @@
             bullets.push(b);
         });
 
-        function initJoystick() {
+       function initJoystick(){
 
-            const manager = nipplejs.create({
+    const manager = nipplejs.create({
 
-                zone: document.getElementById("joystick-zone"),
+        zone: document.getElementById("joystick-zone"),
 
-                mode: "static",
+        mode: "static",
 
-                position: {
-                    left: "75px",
-                    top: "75px"
-                },
+        position: {
+            left: "75px",
+            top: "75px"
+        },
 
-                color: "white",
+        color: "white",
 
-                size: 100
-            });
+        size: 100
+    });
 
-            manager.on("move", (evt, data) => {
+    manager.on("move",(evt,data)=>{
 
-                const angle = data.angle.degree;
+        if(!data.direction) return;
 
-                keys["KeyW"] = angle > 45 && angle < 135;
-                keys["KeyS"] = angle > 225 && angle < 315;
-                keys["KeyA"] = angle > 135 && angle < 225;
-                keys["KeyD"] = angle < 45 || angle > 315;
-            });
+        keys["KeyW"] = false;
+        keys["KeyS"] = false;
+        keys["KeyA"] = false;
+        keys["KeyD"] = false;
 
-            manager.on("end", () => {
+        const dir = data.direction.angle;
 
-                keys["KeyW"] = false;
-                keys["KeyS"] = false;
-                keys["KeyA"] = false;
-                keys["KeyD"] = false;
-            });
+        if(dir === "up"){
+            keys["KeyW"] = true;
         }
+
+        if(dir === "down"){
+            keys["KeyS"] = true;
+        }
+
+        if(dir === "left"){
+            keys["KeyA"] = true;
+        }
+
+        if(dir === "right"){
+            keys["KeyD"] = true;
+        }
+    });
+
+    manager.on("end",()=>{
+
+        keys["KeyW"] = false;
+        keys["KeyS"] = false;
+        keys["KeyA"] = false;
+        keys["KeyD"] = false;
+    });
+}
 
         function shoot() {
 
