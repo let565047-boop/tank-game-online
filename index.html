@@ -251,6 +251,8 @@
         let maze = [];
 
         let gameActive = false;
+        let itemMessage = "";
+        let itemMessageTime = 0;
 
         const keys = {};
 
@@ -400,16 +402,26 @@
                 me.angle = Math.atan2(dy, dx);
             }
 
+            const tankSize = 15;
+
             let newX = me.x + dx;
             let newY = me.y + dy;
 
-            const gridX = Math.floor(newX / 40);
-            const gridY = Math.floor(newY / 40);
+            const left = Math.floor((newX - tankSize) / 40);
+            const right = Math.floor((newX + tankSize) / 40);
 
-            if (
-                maze[gridY] &&
-                maze[gridY][gridX] === 0
-            ) {
+            const top = Math.floor((newY - tankSize) / 40);
+            const bottom = Math.floor((newY + tankSize) / 40);
+
+            const canMove =
+                maze[top] &&
+                maze[bottom] &&
+                maze[top][left] === 0 &&
+                maze[top][right] === 0 &&
+                maze[bottom][left] === 0 &&
+                maze[bottom][right] === 0;
+
+            if (canMove) {
                 me.x = newX;
                 me.y = newY;
             }
@@ -484,17 +496,31 @@
                 );
 
                 if (dist < 25) {
-
                     if (item.type === "HEAL") {
-                        me.hp = Math.min(100, me.hp + 30);
+
+                        me.hp = Math.min(
+                            100,
+                            me.hp + 30
+                        );
+
+                        itemMessage = "+30 HP";
+                        itemMessageTimer = 120;
                     }
 
                     if (item.type === "SPEED") {
+
                         me.speed += 0.3;
+
+                        itemMessage = "SPEED UP";
+                        itemMessageTimer = 120;
                     }
 
                     if (item.type === "DAMAGE") {
+
                         me.damage += 10;
+
+                        itemMessage = "DAMAGE UP";
+                        itemMessageTimer = 120;
                     }
 
                     items.splice(index, 1);
@@ -536,30 +562,37 @@
                 }
             }
 
-            items.forEach(i => {
+           items.forEach(i=>{
 
-                if (i.type === "HEAL") {
-                    ctx.fillStyle = "#22c55e";
-                }
-                else if (i.type === "SPEED") {
-                    ctx.fillStyle = "#3b82f6";
-                }
-                else {
-                    ctx.fillStyle = "#ef4444";
-                }
+    if(i.type === "HEAL"){
+        ctx.fillStyle = "#22c55e";
+    }
+    else if(i.type === "SPEED"){
+        ctx.fillStyle = "#3b82f6";
+    }
+    else{
+        ctx.fillStyle = "#ef4444";
+    }
 
-                ctx.beginPath();
+    // Hiệu ứng phát sáng
+    ctx.shadowBlur = 20;
+    ctx.shadowColor = ctx.fillStyle;
 
-                ctx.arc(
-                    i.x,
-                    i.y,
-                    10,
-                    0,
-                    Math.PI * 2
-                );
+    ctx.beginPath();
 
-                ctx.fill();
-            });
+    ctx.arc(
+        i.x,
+        i.y,
+        10,
+        0,
+        Math.PI * 2
+    );
+
+    ctx.fill();
+
+    // reset shadow
+    ctx.shadowBlur = 0;
+});
 
             Object.values(remotePlayers).forEach(p => {
 
