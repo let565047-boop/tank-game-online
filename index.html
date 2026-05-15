@@ -461,6 +461,20 @@
                 ) {
                     bullets.splice(index, 1);
                     return;
+                    if(Date.now() - itemMessageTime < 2000){
+
+    ctx.fillStyle = "white";
+
+    ctx.font = "bold 24px Arial";
+
+    ctx.textAlign = "center";
+
+    ctx.fillText(
+        itemMessage,
+        canvas.width / 2,
+        40
+    );
+}
                 }
 
                 Object.values(remotePlayers).forEach(p => {
