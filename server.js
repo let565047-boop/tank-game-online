@@ -34,8 +34,9 @@ const maps = {
 
 io.on("connection", (socket) => {
 
+    // SỬA: Thêm nhận diện forceHost từ Client gửi lên để phân quyền chuẩn
     socket.on("join-room", (data) => {
-        const { roomId, playerName, color } = data;
+        const { roomId, playerName, color, forceHost } = data;
         if (!roomId) return;
 
         socket.join(roomId);
@@ -48,6 +49,14 @@ io.on("connection", (socket) => {
         const room = gameRooms[roomId];
         const pCount = Object.keys(room.players).length;
         const map = room.currentMap;
+
+        // Xử lý phân biệt quyền: Bấm tạo phòng -> Chắc chắn làm Host. Bấm vào phòng -> Làm khách (trừ khi phòng trống)
+        let assignedAsHost = false;
+        if (forceHost) {
+            assignedAsHost = true;
+        } else {
+            assignedAsHost = (pCount === 0);
+        }
 
         let emptyTiles = [];
         for (let y = 1; y < map.length - 1; y++) {
@@ -64,19 +73,20 @@ io.on("connection", (socket) => {
 
         room.players[socket.id] = {
             id: socket.id,
-            name: playerName || "Player",
+            name: playerName || (assignedAsHost ? "Chủ Phòng" : "Player"),
             color: color || '#ef4444',
             x: pos.x,
             y: pos.y,
             angle: 0,
-            isHost: pCount === 0,
+            isHost: assignedAsHost, // Lưu trạng thái Host thực tế vào bộ nhớ Server
             alive: true,
             hp: 100,
             baseSpeed: 4,
             speedBoost: 0,
             damage: 35
         };
-        // 🔥 THÊM DÒNG NÀY: Phản hồi riêng cho duy nhất máy khách vừa kết nối để chuyển giao diện
+
+        // Gửi phản hồi thành công riêng biệt để Client kích hoạt ẩn/hiển thị phòng chờ
         socket.emit("join-success", {
             roomId: roomId,
             isHost: room.players[socket.id].isHost
@@ -85,7 +95,6 @@ io.on("connection", (socket) => {
         io.to(roomId).emit("update-players", room.players);
     });
 
-    // CHỨNG NĂNG KHỞI ĐỘNG GAME (ĐÃ VÁ LỖI KẸT TƯỜNG)
     socket.on("start-game", (data) => {
         const { roomId, mapType } = data;
         const room = gameRooms[roomId];
@@ -98,7 +107,6 @@ io.on("connection", (socket) => {
         room.currentMap = finalMap;
         const types = ['SPEED', 'DAMAGE', 'HEAL'];
 
-        // 🔥 THAY ĐỔI: Tìm tất cả ô trống của MAP MỚI được chọn
         let emptyTiles = [];
         for (let y = 1; y < finalMap.length - 1; y++) {
             for (let x = 1; x < finalMap[y].length - 1; x++) {
@@ -108,7 +116,6 @@ io.on("connection", (socket) => {
             }
         }
 
-        // 🔥 THAY ĐỔI: Sắp xếp lại vị trí ngẫu nhiên không kẹt tường cho MỌI người chơi
         Object.keys(room.players).forEach(pId => {
             const pos = emptyTiles.length > 0
                 ? emptyTiles[Math.floor(Math.random() * emptyTiles.length)]
@@ -116,11 +123,10 @@ io.on("connection", (socket) => {
 
             room.players[pId].x = pos.x;
             room.players[pId].y = pos.y;
-            room.players[pId].hp = 100; // Reset đầy máu khi trận đấu bắt đầu
+            room.players[pId].hp = 100; 
             room.players[pId].alive = true;
         });
 
-        // Tạo 6 item ngẫu nhiên
         for (let i = 0; i < 6; i++) {
             let rx, ry, found = false, attempts = 0;
             while (!found && attempts < 50) {
@@ -179,7 +185,6 @@ io.on("connection", (socket) => {
         }
     });
 
-    // CHỨC NĂNG ĂN VẬT PHẨM (ĐÃ NÂNG THỜI GIAN BUFF LÊN 15 GIÂY)
     socket.on("item-collected", (d) => {
         const room = gameRooms[d.roomId];
         if (!room || !room.players[socket.id] || !room.players[socket.id].alive) return;
@@ -194,16 +199,14 @@ io.on("connection", (socket) => {
             player.hp = Math.min(100, player.hp + 30);
         } else if (serverItem.type === 'SPEED') {
             player.speedBoost = 2;
-            // ⏱️ THAY ĐỔI: Kéo dài thời gian hiệu ứng tăng tốc lên 15 giây (15000ms)
             setTimeout(() => {
                 if (gameRooms[d.roomId]?.players[socket.id]) gameRooms[d.roomId].players[socket.id].speedBoost = 0;
-            }, 15000);
+            }, 15000); // Đã đồng bộ 15 giây ổn định
         } else if (serverItem.type === 'DAMAGE') {
             player.damage = 60;
-            // ⏱️ THAY ĐỔI: Kéo dài thời gian hiệu ứng tăng sát thương lên 15 giây (15000ms)
             setTimeout(() => {
                 if (gameRooms[d.roomId]?.players[socket.id]) gameRooms[d.roomId].players[socket.id].damage = 35;
-            }, 15000);
+            }, 15000); // Đã đồng bộ 15 giây ổn định
         }
 
         room.items.splice(itemIndex, 1);
@@ -258,4 +261,4 @@ io.on("connection", (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log("Server Online - Bug Fixed!"));
+server.listen(PORT, () => console.log("Server Online - Lobby Secured!"));

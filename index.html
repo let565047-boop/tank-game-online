@@ -142,40 +142,47 @@
                 <input id="player-name" placeholder="Tên người chơi"
                     class="w-full p-4 rounded-xl bg-slate-950 border border-slate-800 outline-none">
 
-                <div class="flex justify-center gap-3">
-                    <div onclick="selectColor('#ef4444',this)" class="color-btn bg-red-500 active"></div>
-                    <div onclick="selectColor('#3b82f6',this)" class="color-btn bg-blue-500"></div>
-                    <div onclick="selectColor('#10b981',this)" class="color-btn bg-emerald-500"></div>
-                    <div onclick="selectColor('#f59e0b',this)" class="color-btn bg-amber-500"></div>
-                    <div onclick="selectColor('#a855f7',this)" class="color-btn bg-purple-500"></div>
+                <div class="grid grid-cols-2 gap-3">
+                    <button id="create-btn" onclick="createRoomAction()" class="p-4 rounded-xl bg-blue-600 font-bold text-sm">
+                        TẠO PHÒNG 👑
+                    </button>
+                    <button id="join-btn" onclick="joinRoomAction()" class="p-4 rounded-xl bg-amber-600 font-bold text-sm">
+                        VÀO PHÒNG 👥
+                    </button>
                 </div>
 
-                <input id="room-id" placeholder="Mã phòng"
+                <input id="room-id" placeholder="Mã phòng muốn vào / tạo"
                     class="w-full p-4 rounded-xl bg-slate-950 border border-slate-800 outline-none">
 
-                <select id="map-type" class="w-full p-4 rounded-xl bg-slate-950 border border-slate-800">
-                    <option value="classic">Classic</option>
-                    <option value="arena">Arena</option>
-                    <option value="cross">Cross</option>
-                    <option value="zigzag">Zigzag</option>
-                    <option value="fortress">Fortress</option>
-                </select>
+                <div id="map-select-zone" class="space-y-2">
+                    <label class="text-xs text-slate-400 font-bold">CHỌN BẢN ĐỒ (CHỈ CHỦ PHÒNG):</label>
+                    <select id="map-type" class="w-full p-4 rounded-xl bg-slate-950 border border-slate-800">
+                        <option value="classic">Classic</option>
+                        <option value="arena">Arena</option>
+                        <option value="cross">Cross</option>
+                        <option value="zigzag">Zigzag</option>
+                        <option value="fortress">Fortress</option>
+                    </select>
+                </div>
 
-                <button id="join-btn" onclick="joinRoomAction()" class="w-full p-4 rounded-xl bg-amber-600 font-bold">
-                    VÀO PHÒNG
-                </button>
+                <div id="lobby-waiting-zone" class="hidden border-t border-slate-800 pt-3 space-y-3">
+                    <h3 class="text-sm font-bold text-slate-400">THÀNH VIÊN TRONG PHÒNG:</h3>
+                    <div id="player-list" class="space-y-2 bg-slate-950 p-3 rounded-xl border border-slate-800 max-h-32 overflow-y-auto">
+                    </div>
 
-                <button id="host-start-btn" onclick="hostStartGame()"
-                    class="w-full p-4 rounded-xl bg-emerald-600 font-bold mt-3 hidden">
-                    BẮT ĐẦU TRẬN ĐẤU 🎮
-                </button>
+                    <button id="host-start-btn" onclick="hostStartGame()"
+                        class="w-full p-4 rounded-xl bg-emerald-600 font-bold hidden">
+                        BẮT ĐẦU TRẬN ĐẤU 🎮
+                    </button>
 
-                <div id="waiting-text" class="text-center text-amber-400 font-medium pt-3 hidden">
-                    Đã vào phòng! Vui lòng đợi chủ phòng bắt đầu trận đấu...
+                    <div id="waiting-text" class="text-center text-amber-400 text-sm font-medium pt-2 hidden">
+                        Đang đợi chủ phòng bắt đầu trận đấu...
+                    </div>
                 </div>
             </div>
         </div>
     </div>
+
     <div id="game-container">
         <canvas id="gameCanvas" width="600" height="600"></canvas>
         <div class="controls">
@@ -208,7 +215,7 @@
         let damageBuffEnd = 0;
         let itemMessage = "";
         let itemMessageTime = 0;
-
+        let isIHost = false;
         const keys = {};
 
         function selectColor(color, el) {
@@ -217,23 +224,31 @@
             el.classList.add("active");
         }
 
-        function joinRoomAction() {
-            const roomId = document.getElementById("room-id").value.trim();
-            const playerName = document.getElementById("player-name").value.trim() || "Player";
-
-            if (!roomId) return;
+        // SỬA: Thêm hàm tạo phòng sinh mã tự động cho chủ phòng
+        function createRoomAction() {
+            const playerName = document.getElementById("player-name").value.trim() || "Chủ Phòng";
+            let roomId = document.getElementById("room-id").value.trim();
+            if (!roomId) {
+                roomId = Math.floor(1000 + Math.random() * 9000).toString();
+                document.getElementById("room-id").value = roomId;
+            }
             currentRoom = roomId;
-
-            socket.emit("join-room", {
-                roomId,
-                playerName,
-                color: selectedColor
-            });
-
-            // 🔥 ĐÃ XÓA dòng socket.emit("start-game") ở đây để tránh lỗi tự kích hoạt trận đấu khi chưa có khách
+            isIHost = true;
+            socket.emit("join-room", { roomId, playerName, color: selectedColor, forceHost: true });
         }
 
-        // 🔥 THÊM HÀM MỚI NÀY VÀO CLIENT ĐỂ CHỦ PHÒNG BẤM THỦ CÔNG
+        function joinRoomAction() {
+            const roomId = document.getElementById("room-id").value.trim();
+            const playerName = document.getElementById("player-name").value.trim() || "Người Chơi";
+            if (!roomId) {
+                alert("Vui lòng nhập Mã phòng để vào!");
+                return;
+            }
+            currentRoom = roomId;
+            isIHost = false;
+            socket.emit("join-room", { roomId, playerName, color: selectedColor, forceHost: false });
+        }
+
         function hostStartGame() {
             if (!currentRoom) return;
             socket.emit("start-game", {
@@ -241,22 +256,49 @@
                 mapType: document.getElementById("map-type").value
             });
         }
-        socket.on("update-players", (players) => { remotePlayers = players; });
 
-        // 🔥 ĐÂY LÀ HÀM SUCCESS THEO CÁCH 2 CỦA SEN:
+        // SỬA: Hàm success xử lý ẩn/hiển thị phân quyền chuẩn chỉ
         socket.on("join-success", (data) => {
             console.log("Đã vào phòng thành công:", data.roomId);
+            isIHost = data.isHost;
 
-            // Nếu người vào phòng là khách (không phải Host)
-            if (!data.isHost) {
-                // 1. Tìm và ẩn cái nút VÀO GAME đi để khách không bấm liên tục được nữa
-                const joinBtn = document.querySelector("button[onclick='joinRoomAction()']");
-                if (joinBtn) joinBtn.style.display = "none";
+            document.getElementById("player-name").disabled = true;
+            document.getElementById("room-id").disabled = true;
+            document.getElementById("create-btn").style.display = "none";
+            document.getElementById("join-btn").style.display = "none";
 
-                // 2. Hiện dòng chữ thông báo trạng thái chờ lên
-                const waitingText = document.getElementById("waiting-text");
-                if (waitingText) waitingText.classList.remove("hidden");
+            document.getElementById("lobby-waiting-zone").classList.remove("hidden");
+
+            if (isIHost) {
+                document.getElementById("host-start-btn").classList.remove("hidden");
+                document.getElementById("map-select-zone").classList.remove("hidden");
+            } else {
+                document.getElementById("waiting-text").classList.remove("hidden");
+                document.getElementById("map-select-zone").classList.add("hidden"); 
             }
+        });
+
+        // SỬA: Hàm hiển thị danh sách người chơi phòng chờ và làm nổi bật chủ phòng
+        socket.on("update-players", (players) => { 
+            remotePlayers = players; 
+            const playerListDiv = document.getElementById("player-list");
+            if (!playerListDiv) return;
+            playerListDiv.innerHTML = ""; 
+
+            Object.values(players).forEach(p => {
+                const item = document.createElement("div");
+                item.className = "flex items-center justify-between p-2 rounded-lg text-sm bg-slate-900 border border-slate-800";
+                
+                if (p.isHost) {
+                    item.innerHTML = `<span class="text-amber-400 font-black flex items-center gap-1">👑 ${p.name} (Chủ Phòng)</span>
+                                      <span class="w-3 h-3 rounded-full" style="background-color: ${p.color}"></span>`;
+                    item.className += " border-amber-500 bg-amber-950/20 shadow-sm shadow-amber-500/20";
+                } else {
+                    item.innerHTML = `<span class="text-slate-300 font-medium">👤 ${p.name}</span>
+                                      <span class="w-3 h-3 rounded-full" style="background-color: ${p.color}"></span>`;
+                }
+                playerListDiv.appendChild(item);
+            });
         });
 
         socket.on("game-started", (data) => {
@@ -268,6 +310,7 @@
             initJoystick();
             gameLoop();
         });
+
         socket.on("player-moved", (d) => {
             if (remotePlayers[d.id]) { Object.assign(remotePlayers[d.id], d); }
         });
@@ -309,7 +352,6 @@
             const me = remotePlayers[socket.id];
             if (!me || !me.alive) return;
 
-            // SỬA: Đảm bảo các chỉ số không bị undefined gây lỗi NaN đứng hình
             const baseSpeed = me.baseSpeed || me.speed || 4;
             const speedBoost = me.speedBoost || 0;
 
@@ -320,8 +362,6 @@
             let dx = 0;
             let dy = 0;
             const moveSpeed = (baseSpeed + speedBoost) * 0.25;
-
-            // ĐÃ XÓA: Dòng gán speedBuffEnd sai vị trí ở đây khiến thanh buff luôn hiện
 
             if (keys["KeyW"]) dy -= moveSpeed;
             if (keys["KeyS"]) dy += moveSpeed;
@@ -334,7 +374,6 @@
 
             const tankSize = 15;
 
-            // SỬA: Tách kiểm tra va chạm X và Y riêng biệt để xe có thể trượt mượt mà theo chân tường
             if (dx !== 0) {
                 let newX = me.x + dx;
                 let left = Math.floor((newX - tankSize) / 40);
@@ -366,7 +405,6 @@
             me.x = Math.max(20, Math.min(canvas.width - 20, me.x));
             me.y = Math.max(20, Math.min(canvas.height - 20, me.y));
 
-            // Xử lý đạn
             bullets.forEach((b, index) => {
                 b.x += Math.cos(b.angle) * 8;
                 b.y += Math.sin(b.angle) * 8;
@@ -394,7 +432,6 @@
 
             bullets = bullets.filter(b => b.x > 0 && b.x < canvas.width && b.y > 0 && b.y < canvas.height);
 
-            // Ăn item
             items.forEach((item, index) => {
                 const dist = Math.hypot(me.x - item.x, me.y - item.y);
 
@@ -406,13 +443,13 @@
                     }
                     if (item.type === "SPEED") {
                         me.speedBoost = 2;
-                        speedBuffEnd = Date.now() + 5000; // Thiết lập đúng vị trí khi ăn item
+                        speedBuffEnd = Date.now() + 15000; // SỬA: Tăng thời gian buff lên 15 giây
                         itemMessage = "SPEED UP";
                         itemMessageTime = Date.now();
                     }
                     if (item.type === "DAMAGE") {
                         me.damage = 60;
-                        damageBuffEnd = Date.now() + 5000;
+                        damageBuffEnd = Date.now() + 15000; // SỬA: Tăng thời gian buff lên 15 giây
                         itemMessage = "DAMAGE UP";
                         itemMessageTime = Date.now();
                     }
@@ -432,14 +469,12 @@
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.fillStyle = "#1e293b";
 
-            // Vẽ mê cung
             for (let y = 0; y < maze.length; y++) {
                 for (let x = 0; x < maze[y].length; x++) {
                     if (maze[y][x] === 1) { ctx.fillRect(x * 40, y * 40, 40, 40); }
                 }
             }
 
-            // Vẽ vật phẩm
             items.forEach(i => {
                 ctx.fillStyle = i.type === "HEAL" ? "#22c55e" : (i.type === "SPEED" ? "#3b82f6" : "#ef4444");
                 ctx.shadowBlur = 20;
@@ -450,7 +485,6 @@
                 ctx.shadowBlur = 0;
             });
 
-            // Vẽ người chơi khác và bản thân
             Object.values(remotePlayers).forEach(p => {
                 if (!p.alive) return;
                 ctx.save();
@@ -462,20 +496,17 @@
                 ctx.fillRect(0, -3, 20, 6);
                 ctx.restore();
 
-                // Thanh máu
                 ctx.fillStyle = "#334155";
                 ctx.fillRect(p.x - 20, p.y - 35, 40, 5);
                 ctx.fillStyle = p.id === socket.id ? "#10b981" : "#ef4444";
                 ctx.fillRect(p.x - 20, p.y - 35, ((p.hp || 100) / 100) * 40, 5);
 
-                // Tên
                 ctx.fillStyle = "white";
                 ctx.font = "bold 10px Arial";
                 ctx.textAlign = "center";
                 ctx.fillText(p.name, p.x, p.y - 42);
             });
 
-            // Vẽ đạn
             ctx.fillStyle = "#fbbf24";
             bullets.forEach(b => {
                 ctx.beginPath();
@@ -483,7 +514,6 @@
                 ctx.fill();
             });
 
-            // Hiện thông báo ăn item
             if (Date.now() - itemMessageTime < 2000) {
                 ctx.fillStyle = "white";
                 ctx.font = "bold 24px Arial";
@@ -491,9 +521,9 @@
                 ctx.fillText(itemMessage, canvas.width / 2, 40);
             }
 
-            // Thanh Speed Buff
+            // SỬA: Điều chỉnh tỉ lệ chia cho 15000 (15 giây) để thanh co ngắn lại mượt mà chính xác
             if (Date.now() < speedBuffEnd) {
-                const remain = (speedBuffEnd - Date.now()) / 5000;
+                const remain = (speedBuffEnd - Date.now()) / 15000;
                 ctx.fillStyle = "#3b82f6";
                 ctx.fillRect(20, 20, 200 * remain, 15);
                 ctx.fillStyle = "white";
@@ -501,9 +531,8 @@
                 ctx.fillText("SPEED", 110, 32);
             }
 
-            // Thanh Damage Buff
             if (Date.now() < damageBuffEnd) {
-                const remain = (damageBuffEnd - Date.now()) / 5000;
+                const remain = (damageBuffEnd - Date.now()) / 15000;
                 ctx.fillStyle = "#ef4444";
                 ctx.fillRect(20, 45, 200 * remain, 15);
                 ctx.fillStyle = "white";
