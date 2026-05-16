@@ -9,7 +9,6 @@ app.use(express.static(__dirname));
 
 let gameRooms = {};
 
-// Hệ thống Map tiêu chuẩn của sen
 const maps = {
     classic: [
         [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
@@ -35,7 +34,6 @@ const maps = {
 
 io.on("connection", (socket) => {
     
-    // 1. NGƯỜI CHƠI VÀO PHÒNG
     socket.on("join-room", (data) => {
         const { roomId, playerName, color } = data;
         if (!roomId) return;
@@ -51,7 +49,6 @@ io.on("connection", (socket) => {
         const pCount = Object.keys(room.players).length;
         const map = room.currentMap;
 
-        // Tìm vị trí trống ngẫu nhiên để hồi sinh xe tăng
         let emptyTiles = [];
         for (let y = 1; y < map.length - 1; y++) {
             for (let x = 1; x < map[y].length - 1; x++) {
@@ -63,9 +60,8 @@ io.on("connection", (socket) => {
 
         const pos = emptyTiles.length > 0 
             ? emptyTiles[Math.floor(Math.random() * emptyTiles.length)]
-            : { x: 60, y: 60 }; // Tọa độ dự phòng
+            : { x: 60, y: 60 };
 
-        // Khởi tạo thông số người chơi mới
         room.players[socket.id] = {
             id: socket.id,
             name: playerName || "Player",
@@ -73,10 +69,10 @@ io.on("connection", (socket) => {
             x: pos.x,
             y: pos.y,
             angle: 0,
-            isHost: pCount === 0, // Người đầu tiên vào là chủ phòng
+            isHost: pCount === 0,
             alive: true,
             hp: 100,
-            baseSpeed: 4,      // SỬA: Đồng bộ biến baseSpeed với Client
+            baseSpeed: 4,      
             speedBoost: 0,
             damage: 35
         };
@@ -84,13 +80,12 @@ io.on("connection", (socket) => {
         io.to(roomId).emit("update-players", room.players);
     });
 
-    // 2. BẮT ĐẦU TRẬN ĐẤU
+    // CHỨNG NĂNG KHỞI ĐỘNG GAME (ĐÃ VÁ LỖI KẸT TƯỜNG)
     socket.on("start-game", (data) => {
         const { roomId, mapType } = data;
         const room = gameRooms[roomId];
         if (!room) return;
 
-        // Chỉ cho phép chủ phòng bắt đầu trận đấu
         if (!room.players[socket.id] || !room.players[socket.id].isHost) return;
 
         let finalMap = maps[mapType] || maps.classic;
@@ -98,19 +93,40 @@ io.on("connection", (socket) => {
         room.currentMap = finalMap;
         const types = ['SPEED', 'DAMAGE', 'HEAL'];
 
-        // Tạo sẵn 6 vật phẩm ngẫu nhiên trên bản đồ
+        // 🔥 THAY ĐỔI: Tìm tất cả ô trống của MAP MỚI được chọn
+        let emptyTiles = [];
+        for (let y = 1; y < finalMap.length - 1; y++) {
+            for (let x = 1; x < finalMap[y].length - 1; x++) {
+                if (finalMap[y][x] === 0) {
+                    emptyTiles.push({ x: x * 40 + 20, y: y * 40 + 20 });
+                }
+            }
+        }
+
+        // 🔥 THAY ĐỔI: Sắp xếp lại vị trí ngẫu nhiên không kẹt tường cho MỌI người chơi
+        Object.keys(room.players).forEach(pId => {
+            const pos = emptyTiles.length > 0 
+                ? emptyTiles[Math.floor(Math.random() * emptyTiles.length)]
+                : { x: 60, y: 60 };
+            
+            room.players[pId].x = pos.x;
+            room.players[pId].y = pos.y;
+            room.players[pId].hp = 100; // Reset đầy máu khi trận đấu bắt đầu
+            room.players[pId].alive = true;
+        });
+
+        // Tạo 6 item ngẫu nhiên
         for (let i = 0; i < 6; i++) {
             let rx, ry, found = false, attempts = 0;
             while (!found && attempts < 50) {
                 rx = Math.floor(Math.random() * 13 + 1);
                 ry = Math.floor(Math.random() * 13 + 1);
-                
                 if (finalMap[ry] && finalMap[ry][rx] === 0) found = true;
                 attempts++;
             }
             if (found) {
                 room.items.push({
-                    id: "_" + Math.random().toString(36).substr(2, 9), // ID chuỗi an toàn hơn
+                    id: "_" + Math.random().toString(36).substr(2, 9),
                     x: rx * 40 + 20,
                     y: ry * 40 + 20,
                     type: types[Math.floor(Math.random() * 3)]
@@ -122,7 +138,6 @@ io.on("connection", (socket) => {
         io.to(roomId).emit("spawn-items", room.items);
     });
 
-    // 3. DI CHUYỂN XE TĂNG
     socket.on("move", (d) => {
         const room = gameRooms[d.roomId];
         if (room && room.players[socket.id] && room.players[socket.id].alive) {
@@ -131,11 +146,9 @@ io.on("connection", (socket) => {
         }
     });
 
-    // 4. BẮN ĐẠN
     socket.on("shoot", (data) => {
         const room = gameRooms[data.roomId];
         const player = room?.players[socket.id];
-
         if (!player || !player.alive) return;
 
         io.to(data.roomId).emit("new-bullet", {
@@ -147,15 +160,11 @@ io.on("connection", (socket) => {
         });
     });
 
-    // 5. XỬ LÝ TRÚNG ĐẠN
     socket.on("hit", (d) => {
         const room = gameRooms[d.roomId];
         const targetPlayer = room?.players[d.targetId];
-        
         if (targetPlayer && targetPlayer.alive) {
-            // Giới hạn sát thương nhận vào để tránh hack sát thương khủng từ Client
             const finalDamage = Math.min(d.damage || 35, 60); 
-            
             targetPlayer.hp -= finalDamage;
             if (targetPlayer.hp <= 0) {
                 targetPlayer.hp = 0; 
@@ -165,39 +174,38 @@ io.on("connection", (socket) => {
         }
     });
 
-    // 6. XỬ LÝ ĂN VẬT PHẨM (ĐÃ KHẮC PHỤC LỖI BẢO MẬT CHÍT/HACK)
+    // CHỨC NĂNG ĂN VẬT PHẨM (ĐÃ NÂNG THỜI GIAN BUFF LÊN 15 GIÂY)
     socket.on("item-collected", (d) => {
         const room = gameRooms[d.roomId];
         if (!room || !room.players[socket.id] || !room.players[socket.id].alive) return;
 
-        // SỬA: Tìm kiếm vị trí thực tế của Item trên Server dựa trên ID
         const itemIndex = room.items.findIndex(i => i.id === d.itemId);
-        
-        // Nếu Item không tồn tại trên Server (đã bị ăn hoặc ID lậu), chặn đứng xử lý
         if (itemIndex === -1) return;
 
         const serverItem = room.items[itemIndex];
         const player = room.players[socket.id];
 
-        // SỬA: Áp dụng hiệu ứng dựa hoàn toàn trên thuộc tính gốc từ SERVER, không tin Client
         if (serverItem.type === 'HEAL') {
             player.hp = Math.min(100, player.hp + 30);
         } else if (serverItem.type === 'SPEED') {
             player.speedBoost = 2;
-            setTimeout(() => { if (room.players[socket.id]) player.speedBoost = 0; }, 5000);
+            // ⏱️ THAY ĐỔI: Kéo dài thời gian hiệu ứng tăng tốc lên 15 giây (15000ms)
+            setTimeout(() => { 
+                if (gameRooms[d.roomId]?.players[socket.id]) gameRooms[d.roomId].players[socket.id].speedBoost = 0; 
+            }, 15000);
         } else if (serverItem.type === 'DAMAGE') {
             player.damage = 60;
-            setTimeout(() => { if (room.players[socket.id]) player.damage = 35; }, 5000);
+            // ⏱️ THAY ĐỔI: Kéo dài thời gian hiệu ứng tăng sát thương lên 15 giây (15000ms)
+            setTimeout(() => { 
+                if (gameRooms[d.roomId]?.players[socket.id]) gameRooms[d.roomId].players[socket.id].damage = 35; 
+            }, 15000);
         }
 
-        // Xóa vật phẩm khỏi dữ liệu Server và đồng bộ lại cho các máy Client khác
         room.items.splice(itemIndex, 1);
         io.to(d.roomId).emit("spawn-items", room.items);
         io.to(d.roomId).emit("update-players", room.players);
 
-        // TÁI TẠO VẬT PHẨM SAU 15 GIÂY (AN TOÀN)
         setTimeout(() => {
-            // SỬA: Kiểm tra phòng còn tồn tại không trước khi spawn để tránh sập (Crash) Server
             const currentRoom = gameRooms[d.roomId];
             if (!currentRoom) return;
 
@@ -205,11 +213,9 @@ io.on("connection", (socket) => {
             const map = currentRoom.currentMap || maps.classic;
 
             let rx, ry, found = false, attempts = 0;
-            // SỬA: Thêm điều kiện attempts tránh kẹt vòng lặp vô hạn gây đơ Server
             while (!found && attempts < 50) {
                 rx = Math.floor(Math.random() * 13 + 1);
                 ry = Math.floor(Math.random() * 13 + 1);
-
                 if (map[ry] && map[ry][rx] === 0) found = true;
                 attempts++;
             }
@@ -226,22 +232,16 @@ io.on("connection", (socket) => {
         }, 15000);
     });
 
-    // 7. NGƯỜI CHƠI NGẮT KẾT NỐI
     socket.on("disconnect", () => {
         const roomId = socket.currentRoom;
         if (roomId && gameRooms[roomId]) {
             const wasHost = gameRooms[roomId].players[socket.id]?.isHost;
-            
-            // Xóa người chơi khỏi phòng dữ liệu
             delete gameRooms[roomId].players[socket.id];
-            
             const remainingPlayers = Object.keys(gameRooms[roomId].players);
 
             if (remainingPlayers.length === 0) {
-                // Nếu không còn ai, xóa luôn phòng để tiết kiệm RAM cho Server
                 delete gameRooms[roomId];
             } else {
-                // SỬA: Nếu Host rời đi, chuyển quyền Host sang cho người tiếp theo
                 if (wasHost) {
                     const nextHostId = remainingPlayers[0];
                     gameRooms[roomId].players[nextHostId].isHost = true;
@@ -253,4 +253,4 @@ io.on("connection", (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log("Server Online - 5 Maps Secure & Optimized!"));
+server.listen(PORT, () => console.log("Server Online - Bug Fixed!"));
