@@ -221,7 +221,27 @@
         }
 
         socket.on("update-players", (players) => { remotePlayers = players; });
+        // Lắng nghe tín hiệu vào phòng thành công từ Server gửi riêng
+        socket.on("join-success", (data) => {
+            console.log("Đã vào phòng thành công:", data.roomId);
 
+            // Tùy thuộc vào ID thẻ HTML màn hình nhập phòng của sen là gì (ví dụ: 'menu', 'login-screen', 'startMenu')
+            // Hãy ẩn nó đi và hiển thị giao diện phòng chờ/game lên nhé:
+            const loginScreen = document.getElementById("startMenu") || document.getElementById("menu");
+            if (loginScreen) {
+                loginScreen.style.display = "none";
+            }
+
+            // Nếu sen có nút "Bắt đầu Game" dành riêng cho chủ phòng, có thể dùng data.isHost để ẩn/hiển thị:
+            const startButton = document.getElementById("start-game-btn"); // Tên ID nút start của sen
+            if (startButton) {
+                if (data.isHost) {
+                    startButton.style.display = "block"; // Chủ phòng thì hiện nút Start
+                } else {
+                    startButton.style.display = "none";  // Khách thì ẩn nút Start đi, đợi chủ bấm thôi
+                }
+            }
+        });
         socket.on("game-started", (data) => {
             maze = data.maze || [];
             remotePlayers = data.players || {};
@@ -274,7 +294,7 @@
             if (!me || !me.alive) return;
 
             // SỬA: Đảm bảo các chỉ số không bị undefined gây lỗi NaN đứng hình
-            const baseSpeed = me.baseSpeed || me.speed || 4; 
+            const baseSpeed = me.baseSpeed || me.speed || 4;
             const speedBoost = me.speedBoost || 0;
 
             if (Date.now() > speedBuffEnd) {
