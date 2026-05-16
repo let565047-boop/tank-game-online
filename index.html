@@ -327,60 +327,60 @@
             bullets.push(b);
         });
 
-       function initJoystick(){
+        function initJoystick() {
 
-    const manager = nipplejs.create({
+            const manager = nipplejs.create({
 
-        zone: document.getElementById("joystick-zone"),
+                zone: document.getElementById("joystick-zone"),
 
-        mode: "static",
+                mode: "static",
 
-        position: {
-            left: "75px",
-            top: "75px"
-        },
+                position: {
+                    left: "75px",
+                    top: "75px"
+                },
 
-        color: "white",
+                color: "white",
 
-        size: 100
-    });
+                size: 100
+            });
 
-    manager.on("move",(evt,data)=>{
+            manager.on("move", (evt, data) => {
 
-        if(!data.direction) return;
+                if (!data.direction) return;
 
-        keys["KeyW"] = false;
-        keys["KeyS"] = false;
-        keys["KeyA"] = false;
-        keys["KeyD"] = false;
+                keys["KeyW"] = false;
+                keys["KeyS"] = false;
+                keys["KeyA"] = false;
+                keys["KeyD"] = false;
 
-        const dir = data.direction.angle;
+                const dir = data.direction.angle;
 
-        if(dir === "up"){
-            keys["KeyW"] = true;
+                if (dir === "up") {
+                    keys["KeyW"] = true;
+                }
+
+                if (dir === "down") {
+                    keys["KeyS"] = true;
+                }
+
+                if (dir === "left") {
+                    keys["KeyA"] = true;
+                }
+
+                if (dir === "right") {
+                    keys["KeyD"] = true;
+                }
+            });
+
+            manager.on("end", () => {
+
+                keys["KeyW"] = false;
+                keys["KeyS"] = false;
+                keys["KeyA"] = false;
+                keys["KeyD"] = false;
+            });
         }
-
-        if(dir === "down"){
-            keys["KeyS"] = true;
-        }
-
-        if(dir === "left"){
-            keys["KeyA"] = true;
-        }
-
-        if(dir === "right"){
-            keys["KeyD"] = true;
-        }
-    });
-
-    manager.on("end",()=>{
-
-        keys["KeyW"] = false;
-        keys["KeyS"] = false;
-        keys["KeyA"] = false;
-        keys["KeyD"] = false;
-    });
-}
 
         function shoot() {
 
@@ -461,20 +461,7 @@
                 ) {
                     bullets.splice(index, 1);
                     return;
-                    if(Date.now() - itemMessageTime < 2000){
 
-    ctx.fillStyle = "white";
-
-    ctx.font = "bold 24px Arial";
-
-    ctx.textAlign = "center";
-
-    ctx.fillText(
-        itemMessage,
-        canvas.width / 2,
-        40
-    );
-}
                 }
 
                 Object.values(remotePlayers).forEach(p => {
@@ -536,7 +523,7 @@
                         );
 
                         itemMessage = "+30 HP";
-                        itemMessageTimer = 120;
+                        itemMessageTime = Date.now();
                     }
 
                     if (item.type === "SPEED") {
@@ -544,7 +531,7 @@
                         me.speed += 0.3;
 
                         itemMessage = "SPEED UP";
-                        itemMessageTimer = 120;
+                        itemMessageTime = Date.now();
                     }
 
                     if (item.type === "DAMAGE") {
@@ -552,7 +539,7 @@
                         me.damage += 10;
 
                         itemMessage = "DAMAGE UP";
-                        itemMessageTimer = 120;
+                        itemMessageTime = Date.now();
                     }
 
                     items.splice(index, 1);
@@ -594,37 +581,37 @@
                 }
             }
 
-           items.forEach(i=>{
+            items.forEach(i => {
 
-    if(i.type === "HEAL"){
-        ctx.fillStyle = "#22c55e";
-    }
-    else if(i.type === "SPEED"){
-        ctx.fillStyle = "#3b82f6";
-    }
-    else{
-        ctx.fillStyle = "#ef4444";
-    }
+                if (i.type === "HEAL") {
+                    ctx.fillStyle = "#22c55e";
+                }
+                else if (i.type === "SPEED") {
+                    ctx.fillStyle = "#3b82f6";
+                }
+                else {
+                    ctx.fillStyle = "#ef4444";
+                }
 
-    // Hiệu ứng phát sáng
-    ctx.shadowBlur = 20;
-    ctx.shadowColor = ctx.fillStyle;
+                // Hiệu ứng phát sáng
+                ctx.shadowBlur = 20;
+                ctx.shadowColor = ctx.fillStyle;
 
-    ctx.beginPath();
+                ctx.beginPath();
 
-    ctx.arc(
-        i.x,
-        i.y,
-        10,
-        0,
-        Math.PI * 2
-    );
+                ctx.arc(
+                    i.x,
+                    i.y,
+                    10,
+                    0,
+                    Math.PI * 2
+                );
 
-    ctx.fill();
+                ctx.fill();
 
-    // reset shadow
-    ctx.shadowBlur = 0;
-});
+                // reset shadow
+                ctx.shadowBlur = 0;
+            });
 
             Object.values(remotePlayers).forEach(p => {
 
@@ -696,6 +683,23 @@
 
                 ctx.fill();
             });
+
+            // HIỆN THÔNG BÁO ITEM
+            if (Date.now() - itemMessageTime < 2000) {
+
+                ctx.fillStyle = "white";
+
+                ctx.font = "bold 24px Arial";
+
+                ctx.textAlign = "center";
+
+                ctx.fillText(
+                    itemMessage,
+                    canvas.width / 2,
+                    40
+                );
+            }
+
         }
         function showResult(text, color) {
 

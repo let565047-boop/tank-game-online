@@ -40,7 +40,12 @@ io.on("connection", (socket) => {
         if (!gameRooms[roomId]) gameRooms[roomId] = { players: {}, items: [] };
 
         const pCount = Object.keys(gameRooms[roomId].players).length;
-        const spawns = [{x:80,y:80},{x:520,y:520},{x:520,y:80},{x:80,y:520}];
+       const spawns = [
+    {x:100,y:100},
+    {x:460,y:460},
+    {x:460,y:100},
+    {x:100,y:460}
+];
         const pos = spawns[pCount] || {x:300,y:300};
 
         gameRooms[roomId].players[socket.id] = {
