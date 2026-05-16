@@ -59,6 +59,7 @@ io.on("connection", (socket) => {
             alive: true,
             hp: 100,
             speed: 2,
+            speedBoost: 0,
             damage: 35
         };
         io.to(roomId).emit("update-players", gameRooms[roomId].players);

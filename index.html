@@ -408,10 +408,15 @@
 
             if (!me || !me.alive) return;
 
+            if (Date.now() > speedBuffEnd) {
+
+                me.speedBoost = 0;
+            }
             let dx = 0;
             let dy = 0;
 
-            const moveSpeed = me.speed += 4;
+            const moveSpeed =
+                (me.baseSpeed + me.speedBoost) * 0.25;
             speedBuffEnd = Date.now() + 5000;
 
 
@@ -532,7 +537,8 @@
 
                     if (item.type === "SPEED") {
 
-                        me.speed += 0.3;
+                        me.speedBoost = 2;
+                        speedBuffEnd = Date.now() + 5000;
 
                         itemMessage = "SPEED UP";
                         itemMessageTime = Date.now();
