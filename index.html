@@ -251,6 +251,8 @@
         let maze = [];
 
         let gameActive = false;
+        let speedBuffEnd = 0;
+        let damageBuffEnd = 0;
         let itemMessage = "";
         let itemMessageTime = 0;
 
@@ -409,7 +411,9 @@
             let dx = 0;
             let dy = 0;
 
-            const moveSpeed = me.speed * 0.7;
+            const moveSpeed = me.speed += 4;
+            speedBuffEnd = Date.now() + 5000;
+
 
             if (keys["KeyW"]) dy -= moveSpeed;
             if (keys["KeyS"]) dy += moveSpeed;
@@ -536,8 +540,8 @@
 
                     if (item.type === "DAMAGE") {
 
-                        me.damage += 10;
-
+                        me.damage = 60;
+                        damageBuffEnd = Date.now() + 5000;
                         itemMessage = "DAMAGE UP";
                         itemMessageTime = Date.now();
                     }
@@ -551,7 +555,15 @@
                     });
                 }
             });
+            // Hết buff speed
+            if (Date.now() > speedBuffEnd) {
+                me.speed = 2;
+            }
 
+            // Hết buff damage
+            if (Date.now() > damageBuffEnd) {
+                me.damage = 35;
+            }
             socket.emit("move", {
                 roomId: currentRoom,
                 x: me.x,
@@ -699,7 +711,57 @@
                     40
                 );
             }
+            // THANH SPEED
+            if (Date.now() < speedBuffEnd) {
 
+                const remain =
+                    (speedBuffEnd - Date.now()) / 5000;
+
+                ctx.fillStyle = "#3b82f6";
+
+                ctx.fillRect(
+                    20,
+                    20,
+                    200 * remain,
+                    15
+                );
+
+                ctx.fillStyle = "white";
+
+                ctx.font = "bold 14px Arial";
+
+                ctx.fillText(
+                    "SPEED",
+                    110,
+                    32
+                );
+            }
+
+            // THANH DAMAGE
+            if (Date.now() < damageBuffEnd) {
+
+                const remain =
+                    (damageBuffEnd - Date.now()) / 5000;
+
+                ctx.fillStyle = "#ef4444";
+
+                ctx.fillRect(
+                    20,
+                    45,
+                    200 * remain,
+                    15
+                );
+
+                ctx.fillStyle = "white";
+
+                ctx.font = "bold 14px Arial";
+
+                ctx.fillText(
+                    "DAMAGE",
+                    110,
+                    57
+                );
+            }
         }
         function showResult(text, color) {
 
