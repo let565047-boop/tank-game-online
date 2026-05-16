@@ -161,16 +161,21 @@
                     <option value="fortress">Fortress</option>
                 </select>
 
-                <button onclick="joinRoomAction()" class="w-full p-4 rounded-xl bg-amber-600 font-bold">
-                    VÀO GAME
+                <button id="join-btn" onclick="joinRoomAction()" class="w-full p-4 rounded-xl bg-amber-600 font-bold">
+                    VÀO PHÒNG
                 </button>
+
+                <button id="host-start-btn" onclick="hostStartGame()"
+                    class="w-full p-4 rounded-xl bg-emerald-600 font-bold mt-3 hidden">
+                    BẮT ĐẦU TRẬN ĐẤU 🎮
+                </button>
+
                 <div id="waiting-text" class="text-center text-amber-400 font-medium pt-3 hidden">
                     Đã vào phòng! Vui lòng đợi chủ phòng bắt đầu trận đấu...
                 </div>
             </div>
         </div>
     </div>
-
     <div id="game-container">
         <canvas id="gameCanvas" width="600" height="600"></canvas>
         <div class="controls">
@@ -219,10 +224,23 @@
             if (!roomId) return;
             currentRoom = roomId;
 
-            socket.emit("join-room", { roomId, playerName, color: selectedColor });
-            socket.emit("start-game", { roomId, mapType: document.getElementById("map-type").value });
+            socket.emit("join-room", {
+                roomId,
+                playerName,
+                color: selectedColor
+            });
+
+            // 🔥 ĐÃ XÓA dòng socket.emit("start-game") ở đây để tránh lỗi tự kích hoạt trận đấu khi chưa có khách
         }
 
+        // 🔥 THÊM HÀM MỚI NÀY VÀO CLIENT ĐỂ CHỦ PHÒNG BẤM THỦ CÔNG
+        function hostStartGame() {
+            if (!currentRoom) return;
+            socket.emit("start-game", {
+                roomId: currentRoom,
+                mapType: document.getElementById("map-type").value
+            });
+        }
         socket.on("update-players", (players) => { remotePlayers = players; });
 
         // 🔥 ĐÂY LÀ HÀM SUCCESS THEO CÁCH 2 CỦA SEN:
