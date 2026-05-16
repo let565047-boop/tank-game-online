@@ -164,6 +164,9 @@
                 <button onclick="joinRoomAction()" class="w-full p-4 rounded-xl bg-amber-600 font-bold">
                     VÀO GAME
                 </button>
+                <div id="waiting-text" class="text-center text-amber-400 font-medium pt-3 hidden">
+                    Đã vào phòng! Vui lòng đợi chủ phòng bắt đầu trận đấu...
+                </div>
             </div>
         </div>
     </div>
@@ -221,27 +224,23 @@
         }
 
         socket.on("update-players", (players) => { remotePlayers = players; });
-        // Lắng nghe tín hiệu vào phòng thành công từ Server gửi riêng
+
+        // 🔥 ĐÂY LÀ HÀM SUCCESS THEO CÁCH 2 CỦA SEN:
         socket.on("join-success", (data) => {
             console.log("Đã vào phòng thành công:", data.roomId);
 
-            // Tùy thuộc vào ID thẻ HTML màn hình nhập phòng của sen là gì (ví dụ: 'menu', 'login-screen', 'startMenu')
-            // Hãy ẩn nó đi và hiển thị giao diện phòng chờ/game lên nhé:
-            const loginScreen = document.getElementById("startMenu") || document.getElementById("menu");
-            if (loginScreen) {
-                loginScreen.style.display = "none";
-            }
+            // Nếu người vào phòng là khách (không phải Host)
+            if (!data.isHost) {
+                // 1. Tìm và ẩn cái nút VÀO GAME đi để khách không bấm liên tục được nữa
+                const joinBtn = document.querySelector("button[onclick='joinRoomAction()']");
+                if (joinBtn) joinBtn.style.display = "none";
 
-            // Nếu sen có nút "Bắt đầu Game" dành riêng cho chủ phòng, có thể dùng data.isHost để ẩn/hiển thị:
-            const startButton = document.getElementById("start-game-btn"); // Tên ID nút start của sen
-            if (startButton) {
-                if (data.isHost) {
-                    startButton.style.display = "block"; // Chủ phòng thì hiện nút Start
-                } else {
-                    startButton.style.display = "none";  // Khách thì ẩn nút Start đi, đợi chủ bấm thôi
-                }
+                // 2. Hiện dòng chữ thông báo trạng thái chờ lên
+                const waitingText = document.getElementById("waiting-text");
+                if (waitingText) waitingText.classList.remove("hidden");
             }
         });
+
         socket.on("game-started", (data) => {
             maze = data.maze || [];
             remotePlayers = data.players || {};
@@ -251,7 +250,6 @@
             initJoystick();
             gameLoop();
         });
-
         socket.on("player-moved", (d) => {
             if (remotePlayers[d.id]) { Object.assign(remotePlayers[d.id], d); }
         });
